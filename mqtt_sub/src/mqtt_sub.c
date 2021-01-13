@@ -118,38 +118,37 @@ int get_con_conf(client_data* client){
     char path[PATH_LEN];
 
     c = uci_alloc_context();
-    // *con = *(connect_data*)calloc(1, sizeof(connect_data));
     //getting remote port
     strcpy(path, "mqtt_sub.mqtt_sub.remote_port");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL){
         con->port = atoi(ptr.o->v.string);
     }
     //geting remote broker address
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.remote_addr");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL){
-        con->host = strcpy(malloc(strlen(ptr.o->v.string)), ptr.o->v.string);
+        con->host = strcpy(malloc(strlen(ptr.o->v.string)+1), ptr.o->v.string);
     }
     //geting remote username
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.username");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL){
-        con->username = strcpy(malloc(strlen(ptr.o->v.string)), ptr.o->v.string);
+        con->username = strcpy(malloc(strlen(ptr.o->v.string)+1), ptr.o->v.string);
     }
     //geting remote password
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.password");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL){
-        con->password = strcpy(malloc(strlen(ptr.o->v.string)), ptr.o->v.string);
+        con->password = strcpy(malloc(strlen(ptr.o->v.string)+1), ptr.o->v.string);
     }
     //geting keep alive value
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.keep_alive");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL){
         con->keep_alive = atoi(ptr.o->v.string);
     }else{
@@ -158,7 +157,7 @@ int get_con_conf(client_data* client){
     //geting is_clean session value
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.is_clean");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL && strcmp("0", ptr.o->v.string) == 0){
         con->is_clean = false;
     }else{
@@ -167,17 +166,47 @@ int get_con_conf(client_data* client){
     //geting has_will value
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.has_will");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
         con->has_will = true;
-//==========================================================================
-// TODO: get will conf
-//==========================================================================
+        
+        struct libmosquitto_will* will;
+        if((will = (struct libmosquitto_will*)calloc(1, sizeof(struct libmosquitto_will))) == NULL) goto fail;
+        con->will = will;
+
+        //geting last will topic name
+        memset(path, '\0', PATH_LEN);
+        strcpy(path, "mqtt_sub.mqtt_sub.will_topic");
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
+        if(ptr.o == NULL || ptr.o->v.string == NULL) goto fail;
+        will->topic = strcpy((char*)malloc(strlen(ptr.o->v.string)+1), ptr.o->v.string);
+        //geting last will topic message
+        memset(path, '\0', PATH_LEN);
+        strcpy(path, "mqtt_sub.mqtt_sub.will_message");
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
+        if(ptr.o != NULL){
+            char* message = strcpy(malloc(strlen(ptr.o->v.string)+1), ptr.o->v.string);
+            will->payload = (void*)message;
+            will->payloadlen = strlen(message);
+        }
+        //geting will qos value
+        memset(path, '\0', PATH_LEN);
+        strcpy(path, "mqtt_sub.mqtt_sub.will_qos");
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
+        if(ptr.o == NULL) goto fail;
+        will->qos = atoi(ptr.o->v.string); //on failure qos becomes 0
+        //geting will retain value
+        memset(path, '\0', PATH_LEN);
+        strcpy(path, "mqtt_sub.mqtt_sub.will_retain");
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
+        if(ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
+            will->retain = true;
+        }
     }
     //geting use_tls value
     memset(path, '\0', PATH_LEN);
     strcpy(path, "mqtt_sub.mqtt_sub.use_tls");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     if(ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
         con->use_tls = true;
 //==========================================================================
@@ -205,7 +234,7 @@ int get_top_conf(client_data* client){
     c = uci_alloc_context();
     //getting number of topics
     strcpy(path, "mqtt_sub");
-    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+    if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
     client->n_tops = ptr.p->n_section - 1;
 
     curr_topic = (topic_data*)calloc(client->n_tops, sizeof(topic_data));
@@ -214,20 +243,20 @@ int get_top_conf(client_data* client){
         //geting qos value
         memset(path, '\0', PATH_LEN);
         sprintf(path, "mqtt_sub.@topic[%d].qos", i);
-        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
-        if(ptr.o == NULL){goto fail;}
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
+        if(ptr.o == NULL) goto fail;
         curr_topic->qos = atoi(ptr.o->v.string); //on failure qos becomes 0
         //geting topic name value
         memset(path, '\0', PATH_LEN);
         sprintf(path, "mqtt_sub.@topic[%d].topic", i);
-        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK && ptr.o != NULL){goto fail;}
-        if(ptr.o == NULL || ptr.o->v.string == NULL){goto fail;}
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK && ptr.o != NULL) goto fail;
+        if(ptr.o == NULL || ptr.o->v.string == NULL) goto fail;
         curr_topic->name = (char*)malloc(strlen(ptr.o->v.string)+1);
         strcpy(curr_topic->name, ptr.o->v.string);
         //geting want_retained value
         memset(path, '\0', PATH_LEN);
         sprintf(path, "mqtt_sub.@topic[%d].want_retained", i);
-        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK){goto fail;}
+        if((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK) goto fail;
         if(ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
             curr_topic->want_retained = true;
         }else{
@@ -254,23 +283,15 @@ int init_client(struct mosquitto** mosq_ptr, client_data* client){
     if(!con->is_clean){
         id = rand_string(id, 31);
     }
-    if((mosq = mosquitto_new(id, con->is_clean, client)) == NULL){
-        return SUB_GEN_ERR;
-    }
+    if((mosq = mosquitto_new(id, con->is_clean, client)) == NULL) return SUB_GEN_ERR;
+
     *mosq_ptr = mosq;
     if(con->username != NULL && con->password != NULL){
-        if((rc = mosquitto_username_pw_set(mosq, con->username, con->password)) != EXIT_SUCCESS){
-            return SUB_GEN_ERR;
-        }
+        if((rc = mosquitto_username_pw_set(mosq, con->username, con->password)) != EXIT_SUCCESS) return SUB_GEN_ERR;
     }
-    //==========================================================================
-    // TODO: configure will
-    //==========================================================================
     
     if(con->has_will){
-        // if((rc = int mosquitto_will_set(mosq, con->username, con->password)) != EXIT_SUCCESS){
-        //     return SUB_GEN_ERR;
-        // }
+        if((rc = mosquitto_will_set(mosq, con->will->topic, con->will->payloadlen, con->will->payload, con->will->qos, con->will->retain)) != EXIT_SUCCESS) return SUB_GEN_ERR;
     }
     //==========================================================================
     // TODO: configure tls
@@ -379,8 +400,10 @@ int connect_to_broker(struct mosquitto* mosq, connect_data* con){
     int rc;
     mosquitto_connect_callback_set(mosq, &on_connect);
     mosquitto_disconnect_callback_set(mosq, &on_disconnect);
-    if((rc = mosquitto_connect(mosq, con->host, con->port, con->keep_alive)) != MOSQ_ERR_SUCCESS){return SUB_GEN_ERR;}
-    // if((rc = mosquitto_loop(mosq, -1, 1)) != MOSQ_ERR_SUCCESS){return SUB_GEN_ERR;}
+    if((rc = mosquitto_connect(mosq, con->host, con->port, con->keep_alive)) != MOSQ_ERR_SUCCESS){
+        printf("rc: %d\n", rc);
+        return SUB_GEN_ERR;
+    } 
     return SUB_SUC;
 }
 
@@ -573,6 +596,7 @@ int main(int argc, char* argv[]){
     if((rc = connect_to_broker(mosq, client->con)) != SUB_SUC) goto ncon_exit;
     if((rc = subscribe_all(mosq, client)) != SUB_SUC) interupt = INT_PRE_DISC;
     
+
     main_loop(mosq, client);
 
     con_exit: //connected clent exit

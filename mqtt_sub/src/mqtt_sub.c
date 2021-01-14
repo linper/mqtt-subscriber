@@ -59,26 +59,22 @@ void sigHandler(int signo){
 // DATABASE
 //==========================================================================
 
-int init_db(sqlite3 *db)
+int init_db(sqlite3 **db)
 {
 	int rc;
 	char *err;
 
-	if ((rc = sqlite3_open(DB, &db)) != SQLITE_OK) {
-		sqlite3_close(db);
+	if ((rc = sqlite3_open(DB, db)) != SQLITE_OK)
 		return SUB_GEN_ERR;
-	}
 	char *sql = "DROP TABLE IF EXISTS logs;"
 		"CREATE TABLE Logs(id INT, timestamp TEXT, type TEXT, topic \
 		TEXT, message TEXT);";
 
-	if ((rc = sqlite3_exec(db, sql, 0, 0, &err)) != SQLITE_OK){
+	if ((rc = sqlite3_exec(*db, sql, 0, 0, &err)) != SQLITE_OK){
 		printf("error: %s\n", err);
 		sqlite3_free(err);
-		sqlite3_close(db);
 		return SUB_GEN_ERR;
 	}
-	sqlite3_close(db);
 	return SUB_SUC;
 }
 
@@ -91,19 +87,12 @@ int log_db(sqlite3 *db, int *n_msg, char *type, char *topic, char *message)
 	if ((rc = sprintf(buff, "INSERT INTO Logs VALUES(%d, datetime('now'), \
 	'%s', '%s', '%s');", *n_msg, type, topic, message)) < 0) return SUB_GEN_ERR;
 
-	if ((rc = sqlite3_open(DB, &db)) != SQLITE_OK) {
-		sqlite3_close(db);
-		return SUB_GEN_ERR;
-	}
-
 	if ((rc = sqlite3_exec(db, buff, 0, 0, &err)) != SQLITE_OK){
 		printf("error: %s\n", err);
 		sqlite3_free(err);
-		sqlite3_close(db);
 		return SUB_GEN_ERR;
 	}
 	(*n_msg)++;
-	sqlite3_close(db);
 	return SUB_SUC;
 }
 
@@ -317,8 +306,9 @@ int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message)
 {
 	struct client_data *client = (struct client_data*)obj;
-	log_db(client->db, &(client->n_msg), "message", message->topic, \
-		(char*)message->payload);
+	if(log_db(client->db, &(client->n_msg), "message", message->topic, \
+	(char*)message->payload) != SUB_SUC)
+		interupt = INT_PRE_DISC;
 	printf("message received\ntopic: %s\npayload: %s\n\n", message->topic,\
 		(char*)message->payload);
 }
@@ -345,7 +335,7 @@ void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
 	switch (rc){
 	case 0:
-		printf("client disconnected normaly");
+		printf("client disconnected normaly\n");
 		break;
 	printf("unexpected disconnect with rc: %d\n", rc);
 		break;
@@ -613,8 +603,8 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sigHandler);
 	openlog(NULL, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 	
-	if ((rc = init_db(db)) != SUB_SUC)
-		goto nmosq_exit;
+	if ((rc = init_db(&db)) != SUB_SUC)
+		goto db_exit;
 	if ((client = (struct client_data*)calloc(1, sizeof(struct client_data))) == NULL)
 		goto nmosq_exit;
 	if ((rc = get_con_conf(client)) != SUB_SUC)
@@ -644,6 +634,8 @@ int main(int argc, char *argv[])
 	nmosq_exit: //when mosq lib was never initialized or already freed
 		free_client(client);
 		// syslog(LOG_ERR, "Error: MQTT subscriber failed");
+	db_exit:
+		sqlite3_close(db);
 		closelog();
 		return rc == 0 ? 0 : -1;
 }

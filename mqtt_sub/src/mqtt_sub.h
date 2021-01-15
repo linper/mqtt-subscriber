@@ -29,6 +29,8 @@ int log_db(sqlite3 *db, int *n_msg, char *type, char *topic, char *message);
 int get_con_conf(struct client_data *client);
 //reads last will data from config file
 int get_will_conf(struct uci_context* c, struct uci_ptr *ptr, struct libmosquitto_will *will);
+//reads tls data from config file
+int get_tls_conf(struct uci_context* c, struct uci_ptr *ptr, struct connect_data *con);
 //reads topics' data from config file
 int get_top_conf(struct client_data *client);
 //creates mosquitto client
@@ -39,10 +41,11 @@ void on_connect(struct mosquitto *mosq, void *obj, int rc);
 void on_disconnect(struct mosquitto *mosq, void *obj, int rc);
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos);
 void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid);
+int pw_callback(char *buf, int size, int rwflag, void *userdata);
 
 //connects client to broker
 //registers on_connect, on_disconnect callbacks
-int connect_to_broker(struct mosquitto *mosq, struct connect_data *con);
+int connect_to_broker(struct mosquitto *mosq, struct client_data *client);
 //subscribes to all given topics
 //registers on_subscribe, on_unsubscribe, on_message callbacs
 int subscribe_all(struct mosquitto *mosq, struct client_data *client);

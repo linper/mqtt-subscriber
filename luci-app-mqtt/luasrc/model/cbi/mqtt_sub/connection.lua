@@ -166,11 +166,11 @@ else
 	tls_certfile:value("", translate("-- No files available --"))
 end
 
-function tls_cafile.write(self, section, value)
+function tls_certfile.write(self, section, value)
 	m.uci:set(self.config, section, "certfile", value)
 end
 
-tls_cafile.cfgvalue = function(self, section)
+tls_certfile.cfgvalue = function(self, section)
 	return m.uci:get(m.config, section, "certfile") or ""
 end
 
@@ -192,25 +192,5 @@ end
 tls_keyfile.cfgvalue = function(self, section)
 	return m.uci:get(m.config, section, "keyfile") or ""
 end
-
--- st = m:section(TypedSection, "topic", translate("Topics"), translate("") )
--- st.addremove = true
--- st.anonymous = true
--- st.template = "../mqtt/tblsection"
--- st.novaluetext = "There are no topics created yet."
-
--- topic = st:option(Value, "topic", translate("Topic name"), translate(""))
--- topic.datatype = "string"
--- topic.maxlength = 65536
--- topic.placeholder = translate("Topic")
--- topic.rmempty = false
--- topic.parse = function(self, section, novld, ...)
--- 	local value = self:formvalue(section)
--- 	if value == nil or value == "" then
--- 		self.map:error_msg(translate("Topic name can not be empty"))
--- 		self.map.save = false
--- 	end
--- 	Value.parse(self, section, novld, ...)
--- end
 
 return m

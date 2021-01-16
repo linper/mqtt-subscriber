@@ -1,6 +1,5 @@
 #include "mqtt_sub.h"
 
-const char *DB = "/usr/share/mqtt_sub/mqtt_sub.db";
 volatile int interupt = 0;
 
 enum ret_codes{
@@ -62,12 +61,12 @@ void sigHandler(int signo){
 // DATABASE
 //==========================================================================
 
-int init_db(sqlite3 **db)
+int init_db(sqlite3 **db, const char *db_name)
 {
 	int rc;
 	char *err;
 
-	if ((rc = sqlite3_open(DB, db)) != SQLITE_OK)
+	if ((rc = sqlite3_open(db_name, db)) != SQLITE_OK)
 		return SUB_GEN_ERR;
 	char *sql = "DROP TABLE IF EXISTS logs;"
 		"CREATE TABLE Logs(id INT, timestamp TEXT, type TEXT, topic \
@@ -569,7 +568,7 @@ void main_loop(struct mosquitto *mosq, struct client_data *client)
 	int rc;
 	while(true){
 		switch (interupt){
-		case INT_PRE_DISC: //unsubscribes topics and disconnenct cliet
+		case INT_PRE_DISC: //unsubscribes topics and disconnenct client
 			interupt = INT_ABSENT;
 			if ((rc = pre_disconnect(mosq, client)) != SUB_SUC)
 				printf("Error: MQTT subscriber failed to disconnect\n");
@@ -582,20 +581,17 @@ void main_loop(struct mosquitto *mosq, struct client_data *client)
 			} else {
 				if ((rc = mosquitto_loop(mosq, -1, 1)) != SUB_SUC){
 					printf("Error: failed to loop: %d\n", rc);
+					log_db(client->db, &(client->n_msg), 
+					"error", "-", "failed to unsubscribe");
 					interupt = INT_READY_DISC;
-
 				}
-//==========================================================================
-// TODO: handle failed unsubscription attenpts
-//==========================================================================
 			}
 			break;
-		case INT_READY_DISC: //unsubscribes topics and disconnenct cliet
+		case INT_READY_DISC: //disconnenct client
 			interupt = INT_ABSENT;
 			if ((rc = disconnect_from_broker(mosq)) != SUB_SUC){
 				printf("Error: MQTT subscriber failed to disconnect\n");
 				interupt = INT_DONE_DISC;
-
 			}
 			break;
 		case INT_DONE_DISC: //goes to exit freeing part
@@ -692,7 +688,8 @@ int test_all_t_status(struct client_data *client, int status)
 
 static char *rand_string(char *str, size_t size)
 {
-	const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
+	const char charset[] = \
+	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
 	if (size) {
 		--size;
 		for (size_t n = 0; n < size; n++) {
@@ -721,10 +718,10 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sigHandler);
 	openlog(NULL, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 	
-	if ((rc = init_db(&db)) != SUB_SUC)
+	if ((rc = init_db(&db, "/usr/share/mqtt_sub/mqtt_sub.db")) != SUB_SUC)
 		goto db_exit;
 	if ((client = (struct client_data*)calloc(1, \
-	sizeof(struct client_data))) == NULL)
+					sizeof(struct client_data))) == NULL)
 		goto nmosq_exit;
 	if ((rc = get_con_conf(client)) != SUB_SUC)
 		goto nmosq_exit;

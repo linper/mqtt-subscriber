@@ -22,7 +22,7 @@ struct client_data;
 void sigHandler(int signo);
 
 //initializes database and creates nessary tables
-int init_db(sqlite3 **db);
+int init_db(sqlite3 **db, const char *db_name);
 //logs message, message type and topic to database
 int log_db(sqlite3 *db, int *n_msg, char *type, char *topic, char *message);
 //reads connection data from config file

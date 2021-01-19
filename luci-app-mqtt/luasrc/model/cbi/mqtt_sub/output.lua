@@ -2,7 +2,6 @@ local sqlite = require "luci.model.sqlite".init()
 
 
 local db_path = "/usr/share/mqtt_sub/mqtt_sub.db"
--- local db_path = "/var/mqtt_sub.db"
 local data = {}
 
 local db = sqlite.database(db_path)
@@ -38,7 +37,6 @@ s.table_config = {
 }
 
 s:option(DummyValue, "timestamp", translate("date"))
-s:option(DummyValue, "type", translate("Event type"))
 s:option(DummyValue, "topic", translate("Topic"))
 s:option(DummyValue, "message", translate("Message"))
 

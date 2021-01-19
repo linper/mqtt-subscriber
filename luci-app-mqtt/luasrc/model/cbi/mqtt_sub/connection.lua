@@ -60,54 +60,6 @@ remote_password.parse = function(self, section, novld, ...)
 	Value.parse(self, section, novld, ...)
 end
 
-will_enabled = s:option(Flag, "has_will", "Will", "Select to enable last will message")
-will_enabled:depends("enabled", "1")
-
-topic = s:option(Value, "will_topic", translate("Topic name"), translate("The last will topic"))
-topic:depends("has_will", "1")
-topic.datatype = "string"
-topic.maxlength = 65536
-topic.placeholder = translate("Topic")
-topic.parse = function(self, section, novld, ...)
-	local value = self:formvalue(section)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub.mqtt_sub.enabled")
-	local will = luci.http.formvalue("cbid.mqtt_sub.mqtt_sub.has_will")
-	if enabled and will and (value == nil or value == "") then
-		self:add_error(section, translate("Topic name can not be empty"))
-		-- self.map:error_msg(translate("Topic name can not be empty"))
-		-- self.map.save = false
-	end
-	Value.parse(self, section, novld, ...)
-end
-
-local qos = s:option(ListValue, "will_qos", translate("QoS level"), translate("The QoS level used for last will topic"))
-qos:depends("has_will", "1")
-qos:value("0", "At most once (0)")
-qos:value("1", "At least once (1)")
-qos:value("2", "Exactly once (2)")
--- qos.rmempty=false
-qos.default="0"
-
-message = s:option(TextValue, "will_message", translate("Message"), translate("The last will message body"))
-message:depends("has_will", "1")
-message.datatype = "string"
-message.maxlength = 65536
-message.placeholder = translate("Message")
-message.parse = function(self, section, novld, ...)
-	local value = self:formvalue(section)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub.mqtt_sub.enabled")
-	local will = luci.http.formvalue("cbid.mqtt_sub.mqtt_sub.has_will")
-	if enabled and will and (value == nil or value == "") then
-		self:add_error(section, translate("Message body must not be empty"))
-		-- self.map.save = false
-	end
-	Value.parse(self, section, novld, ...)
-end
-
-local will_retain = s:option(Flag, "will_retain", "Retained", "")
-will_retain:depends("has_will", "1")
-will_retain.default="0"
-
 FileUpload.size = "262144"
 FileUpload.sizetext = translate("Selected file is too large, max 256 KiB")
 FileUpload.sizetextempty = translate("Selected file is empty")

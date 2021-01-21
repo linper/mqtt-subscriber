@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "db.h"
 #include "conf.h"
+#include "parser.h"
 
 void sigHandler(int signo);
 

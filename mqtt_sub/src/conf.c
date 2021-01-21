@@ -140,7 +140,7 @@ int get_top_conf(struct client_data *client)
 		goto fail;
 	if ((client->tops = new_glist(0)) == NULL)
 		goto fail;
-	set_free_cb_glist(client->tops, &free_top_cb);
+	
 	while(true) {
 		sprintf(path, "mqtt_sub.@topic[%d]", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
@@ -172,8 +172,8 @@ int get_top_conf(struct client_data *client)
 		curr_topic->id = atol(ptr.o->v.string);
 		//geting topic name value
 		sprintf(path, "mqtt_sub.@topic[%d].topic", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK && \
-				ptr.o == NULL || ptr.o->v.string == NULL)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
 			goto fail;
 		curr_topic->name = (char*)malloc(strlen(ptr.o->v.string)+1);
 		strcpy(curr_topic->name, ptr.o->v.string);
@@ -233,7 +233,7 @@ int get_ev_conf(struct client_data *client)
 		goto fail;
 	if ((client->events = new_glist(0)) == NULL)
 		goto fail;
-	set_free_cb_glist(client->events, &free_ev_cb);
+	
 	while(true){
 		sprintf(path, "mqtt_sub.@event[%d]", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \

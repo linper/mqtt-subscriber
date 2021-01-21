@@ -161,5 +161,6 @@ void **get_array_glist(struct glist *lst)
 
 void set_free_cb_glist(struct glist *lst, void (*cb)(void*))
 {
-	lst->free_cb = cb;
+	if (lst)
+		lst->free_cb = cb;
 }

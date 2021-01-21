@@ -1,28 +1,21 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef M_UTILS_H
+#define M_UTILS_H
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <syslog.h>
 #include "sqlite3.h"
 #include "glist.h"
-
-enum ret_codes{
-	SUB_GEN_ERR = -1,
-	SUB_SUC = 0,
-	SUB_FAIL = 1,
-};
 
 enum t_status{
 	T_UNSUB,
 	T_SUB,
 };
 
-enum inter_status{
-	INT_ABSENT,
-	INT_PRE_DISC,
-	INT_WAIT_UNSUB,
-	INT_READY_DISC,
-	INT_DONE_DISC,
+enum ret_codes{
+	SUB_GEN_ERR = -1,
+	SUB_SUC = 0,
+	SUB_FAIL = 1,
 };
 
 enum ev_rules{
@@ -43,11 +36,23 @@ extern struct topic_data topic_data;
 extern struct event_data event_data;
 extern struct connect_data connect_data;
 extern struct client_data client_data;
+extern struct msg msg;
+extern struct msg_dt msg_dt;
+
+struct msg_dt{
+	char *type;
+	char *data;
+};
+
+struct msg{
+	char *sender;
+	struct glist *body;
+};
 
 struct event_data{
 	int t_id;
-	enum ev_dt type;
 	char *field;
+	enum ev_dt type;
 	void *target;
 	enum ev_rules rule;
 };
@@ -101,7 +106,9 @@ int test_all_t_status(struct client_data *client, int status);
 char *rand_string(char *str, size_t size);
 
 void free_client (struct client_data *client);
+void free_msg(struct msg *msg);
 void free_top_cb(void *obj);
 void free_ev_cb(void *obj);
+void free_msg_dt_cb(void *obj);
 
 #endif

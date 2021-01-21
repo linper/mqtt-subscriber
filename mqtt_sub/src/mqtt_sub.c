@@ -1,6 +1,14 @@
 
 #include "mqtt_sub.h"
 
+enum inter_status{
+	INT_ABSENT,
+	INT_PRE_DISC,
+	INT_WAIT_UNSUB,
+	INT_READY_DISC,
+	INT_DONE_DISC,
+};
+
 volatile int interupt = 0;
 
 
@@ -15,10 +23,27 @@ void sigHandler(int signo){
 void on_message(struct mosquitto *mosq, void *obj, \
 					const struct mosquitto_message *message)
 {
+	int rc;
+	struct msg *msg;
+	if ((rc = parse_msg(message->payload, &msg)) != SUB_SUC){
+		if (rc == SUB_GEN_ERR)
+			interupt = INT_PRE_DISC;
+		else
+			return;
+	}
+	size_t n = count_glist(msg->body);
 	struct client_data *client = (struct client_data*)obj;
-	if (log_db(client->db, &(client->n_msg), message->topic, \
-	(char*)message->payload) != SUB_SUC)
-		interupt = INT_PRE_DISC;
+	struct msg_dt *mdt;
+	for (size_t i = 0; i < n; i++){
+		mdt = get_glist(msg->body, i);
+		char buff[strlen(mdt->type) + strlen(mdt->data) + 3];
+		sprintf(buff, "%s: %s", mdt->type, mdt->data);
+		if (log_db(client->db, &(client->n_msg), message->topic, buff) \
+								!= SUB_SUC){
+			interupt = INT_PRE_DISC;
+			return;
+		}
+	}
 }
 
 void on_connect(struct mosquitto *mosq, void *obj, int rc)
@@ -227,7 +252,6 @@ void main_loop(struct mosquitto *mosq, struct client_data *client)
 	exit:
 		return;
 }
-
 
 //==========================================================================
 // MAIN

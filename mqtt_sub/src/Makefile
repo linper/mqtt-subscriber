@@ -2,10 +2,10 @@ DEPS = $(wildcard *.h)
 SRC = $(wildcard *.c)
 OBJ = $(patsubst %.c, %.o, $(SRC))
 TARGET = mqtt_sub
-LDFLAGS+=-luci -lmosquitto -lsqlite3
+LDFLAGS+=-luci -lmosquitto -lsqlite3 -lubox -lblobmsg_json
 CFLAGS = -Wall -Wextra -g
-DEBUG = -DDEBUG
-# DEBUG =
+# DEBUG = -DDEBUG
+DEBUG =
 RM = rm -f
 
 all: $(TARGET)

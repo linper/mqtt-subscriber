@@ -55,8 +55,9 @@ void on_subscribe(struct mosquitto *mosq, void *obj, int mid, \
 {
 	struct client_data *client = (struct client_data*)obj;
 	struct topic_data *top;
-	for (int i = 0; i < client->n_tops; i++){
-		top = client->tops+i;
+	size_t n = count_glist(client->tops);
+	for (size_t i = 0; i < n; i++){
+		top = get_glist(client->tops, i);
 		if (top->mid == mid){
 			top->status = T_SUB;
 			break;
@@ -68,8 +69,9 @@ void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
 {
 	struct client_data *client = (struct client_data*)obj;
 	struct topic_data *top;
-	for (int i = 0; i < client->n_tops; i++){
-		top = client->tops+i;
+	size_t n = count_glist(client->tops);
+	for (size_t i = 0; i < n; i++){
+		top = get_glist(client->tops, i);
 		if (top->mid == mid){
 			top->status = T_UNSUB;
 			break;
@@ -131,13 +133,14 @@ int connect_to_broker(struct mosquitto *mosq, struct client_data *client)
 int subscribe_all(struct mosquitto *mosq, struct client_data *client)
 {
 	int rc;
-	if (client->n_tops){
+	size_t n = count_glist(client->tops);
+	if (n){
 		struct topic_data *top;
 		mosquitto_message_callback_set(mosq, &on_message);
 		mosquitto_subscribe_callback_set(mosq, &on_subscribe);
 		mosquitto_unsubscribe_callback_set(mosq, &on_unsubscribe);
-		for (int i = 0; i < client->n_tops; i++){
-			top = client->tops+i;
+		for (size_t i = 0; i < n; i++){
+			top = get_glist(client->tops, i);
 			if ((rc = mosquitto_subscribe(mosq, &(top->mid), \
 			top->name, top->qos)) != SUB_SUC){
 				char buff[strlen(top->name)+100];
@@ -155,8 +158,9 @@ int pre_disconnect(struct mosquitto *mosq, struct client_data *client)
 {
 	int rc;
 	struct topic_data *top;
-	for (int i = 0; i < client->n_tops; i++){
-		top = client->tops+i;
+	size_t n = count_glist(client->tops);
+	for (size_t i = 0; i < n; i++){
+		top = get_glist(client->tops, i);
 		if ((rc = mosquitto_unsubscribe(mosq, &(top->mid), \
 							top->name)) != SUB_SUC){
 			char buff[strlen(top->name)+100];
@@ -224,34 +228,6 @@ void main_loop(struct mosquitto *mosq, struct client_data *client)
 		return;
 }
 
-//==========================================================================
-// FREEING MEMORY
-//==========================================================================
-
-void free_client(struct client_data *client)
-{
-	if (client != NULL){
-		struct connect_data *con = client->con;
-		struct topic_data *tops = client->tops;
-
-		if (con != NULL){
-			free(con->username);
-			free(con->password);
-			free(con->host);
-			free(con->cafile);
-			free(con->certfile);
-			free(con->keyfile);
-			free(con);
-		}
-		if (tops != NULL){
-			for (int i = 0; i < client->n_tops; i++)
-				free((tops+i)->name);
-			free(tops);
-		}
-	}
-	free(client);
-}
-
 
 //==========================================================================
 // MAIN
@@ -275,9 +251,7 @@ int main(int argc, char *argv[])
 	if ((client = (struct client_data*)calloc(1, \
 					sizeof(struct client_data))) == NULL)
 		goto nmosq_exit;
-	if ((rc = get_con_conf(client)) != SUB_SUC)
-		goto nmosq_exit;
-	if ((rc = get_top_conf(client)) != SUB_SUC)
+	if ((rc = get_conf(client)) != SUB_SUC)
 		goto nmosq_exit;
 
 	client->db = db; //need to fix this

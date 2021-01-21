@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "sqlite3.h"
+#include "glist.h"
 
 enum ret_codes{
 	SUB_GEN_ERR = -1,
@@ -24,16 +25,43 @@ enum inter_status{
 	INT_DONE_DISC,
 };
 
+enum ev_rules{
+	EV_R_EQ = 1,
+	EV_R_NEQ = 2,
+	EV_R_MT = 3,
+	EV_R_LT = 4,
+	EV_R_ME = 5,
+	EV_R_LE = 6,
+};
+
+enum ev_dt{
+	EV_DT_LNG,
+	EV_DT_STR,
+};
+
 extern struct topic_data topic_data;
+extern struct event_data event_data;
 extern struct connect_data connect_data;
 extern struct client_data client_data;
 
+struct event_data{
+	int t_id;
+	enum ev_dt type;
+	char *field;
+	void *target;
+	enum ev_rules rule;
+};
+
 struct topic_data{
 	char *name;
+	int id;
 	int qos;
 	bool want_retained;
+	bool constrain;
+	struct glist *fields;
 	enum t_status status;
 	int mid;
+	struct glist *events;
 };
 
 struct connect_data{
@@ -52,8 +80,8 @@ struct connect_data{
 
 struct client_data{
 	struct connect_data *con;
-	struct topic_data *tops;
-	int n_tops;
+	struct glist *tops;
+	struct glist *events;
 	sqlite3 *db;
 	int n_msg;
 };
@@ -71,5 +99,9 @@ struct client_data{
 int test_all_t_status(struct client_data *client, int status);
 //generates random string of given size 
 char *rand_string(char *str, size_t size);
+
+void free_client (struct client_data *client);
+void free_top_cb(void *obj);
+void free_ev_cb(void *obj);
 
 #endif

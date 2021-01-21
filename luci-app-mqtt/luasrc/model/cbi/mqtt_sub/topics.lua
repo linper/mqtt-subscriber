@@ -1,39 +1,46 @@
+local uci = require("luci.model.uci").cursor()
+local dsp = require "luci.dispatcher"
+-- local utils = require "luci.tools.utils"
+local m ,s, o
+
 m = Map("mqtt_sub")
 
+s = m:section(TypedSection, "topic", translate("Topics"), translate("") )
+s.addremove = true
+s.anonymous = true
+s.template = "cbi/tblsection"
+s.novaluetext = "There are no topics created yet."
+s.main_toggled = true
+s.extedit = dsp.build_url("admin", "services", "mqtt", "subscriber", "topics", "%s")
 
-st = m:section(TypedSection, "topic", translate("Topics"), translate("") )
-st.addremove = true
-st.anonymous = true
-st.template = "mqtt/tblsection2"
-st.novaluetext = "There are no topics created yet."
-
-topic = st:option(Value, "topic", translate("Topic name"), translate(""))
-topic.datatype = "string"
-topic.maxlength = 65536
-topic.placeholder = translate("Topic")
-topic.rmempty = false
-topic.parse = function(self, section, novld, ...)
-	local value = self:formvalue(section)
-	if value == nil or value == "" then
-		self.map:error_msg(translate("Topic name can not be empty"))
-		self.map.save = false
-	end
-	Value.parse(self, section, novld, ...)
+function s.create(self)
+	stat = TypedSection.create(self, name)
+	uci:set(self.config, stat, "topic", "")
+	uci:set(self.config, stat, "id", get_top_unq_id())
+	uci:set(self.config, stat, "qos", "0")
+	uci:set(self.config, stat, "want_retained", "0")
+	luci.http.redirect(dsp.build_url("admin", "services", "mqtt", "subscriber", "topics", stat))
+	return stat
 end
 
-retained = st:option(ListValue, "want_retained", translate("Retained"), translate("What to do with retained messages"))
-retained:value("1", "accept")
-retained:value("0", "reject")
-retained.default = "1"
+o = s:option( DummyValue, "topic", translate("Topic name"))
+o.datatype = "string"
 
-qos = st:option(ListValue, "qos", translate("QoS level"), translate("The publish/subscribe QoS level used for this topic"))
-qos:value("0", "At most once (0)")
-qos:value("1", "At least once (1)")
-qos:value("2", "Exactly once (2)")
-qos.rmempty=false
-qos.default="0"
+s:option(Flag, "enabled")
 
+function get_top_unq_id()
+    local indices = {}
+    m.uci:foreach("mqtt_sub", "topic", function(s)
+		indices[#indices + 1] = tonumber(s.id)
+    end)
+    local max = 0
+	for i, v in pairs(indices) do
+		if v > max then
+			max = v
+		end
+    end
+    return max + 1
+end
 
+return m
 
-    return m
-    

@@ -16,7 +16,6 @@
 #include "db.h"
 #include "conf.h"
 
-
 void sigHandler(int signo);
 
 void on_message(struct mosquitto *mosq, void *obj, \
@@ -39,6 +38,5 @@ int subscribe_all(struct mosquitto *mosq, struct client_data *client);
 int pre_disconnect(struct mosquitto *mosq, struct client_data *client);
 //disconnects client fron broker
 int disconnect_from_broker(struct mosquitto *mosq);
-void free_client (struct client_data *client);
 
 #endif

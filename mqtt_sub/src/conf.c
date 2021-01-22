@@ -197,9 +197,9 @@ int get_top_conf(struct client_data *client)
 			if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
 				goto fail;
 			struct uci_element *e;
-			uci_foreach_element(&ptr.o->v.list, e) {
-				char *c  = (char*)malloc(strlen(ptr.o->v.string)+1);
-				strcpy(c, ptr.o->v.string);
+			uci_foreach_element(&ptr.o->v.list, e) { //TODO fix heare
+				char *c  = (char*)malloc(strlen(e->name)+1);
+				strcpy(c, e->name);
 				push_glist(curr_topic->fields, c);
 			}
 

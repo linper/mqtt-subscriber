@@ -13,6 +13,7 @@
 #include "sqlite3.h"
 
 #include "utils.h"
+#include "helpers.h"
 #include "db.h"
 #include "conf.h"
 #include "parser.h"

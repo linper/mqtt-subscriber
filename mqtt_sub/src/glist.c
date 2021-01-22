@@ -156,7 +156,9 @@ size_t count_glist(struct glist *lst)
 
 void **get_array_glist(struct glist *lst)
 {
-	return lst->array;
+	if (lst)
+		return lst->array;
+	return NULL;
 }
 
 void set_free_cb_glist(struct glist *lst, void (*cb)(void*))

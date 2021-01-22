@@ -2,8 +2,7 @@
 #define PARSER_H
 
 #include <stdlib.h>
-#include <libubox/blobmsg_json.h>
-#include <libubox/blobmsg.h>
+#include "json-c/json.h"
 #include "utils.h"
 #include "glist.h"
 

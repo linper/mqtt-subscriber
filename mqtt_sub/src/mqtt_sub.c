@@ -31,9 +31,16 @@ void on_message(struct mosquitto *mosq, void *obj, \
 		else
 			return;
 	}
-	size_t n = count_glist(msg->body);
+	struct topic_data *top;
 	struct client_data *client = (struct client_data*)obj;
+	if ((top = get_top_by_name(client->tops, message->topic)) == NULL){
+		interupt = INT_PRE_DISC;
+		return;
+	}
+	filter_msg(top, msg);	
 	struct msg_dt *mdt;
+	size_t n = count_glist(msg->body);
+
 	for (size_t i = 0; i < n; i++){
 		mdt = get_glist(msg->body, i);
 		char buff[strlen(mdt->type) + strlen(mdt->data) + 3];

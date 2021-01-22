@@ -1,73 +1,59 @@
 #include "parser.h"
 
-enum {
-	SND_MSG,
-	BODY_MSG,
-	__MSG_MAX
-};
-
-enum {
-	TYPE_DT,
-	DATA_DT,
-	__DT_MAX
-};
-
-static const struct blobmsg_policy msg_policy[__MSG_MAX] = {
-	[SND_MSG] = { .name = "sender", .type = BLOBMSG_TYPE_STRING },
-	[BODY_MSG] = { .name = "body", .type = BLOBMSG_TYPE_ARRAY },
-};
-
-static const struct blobmsg_policy dt_policy[__DT_MAX] = {
-	[TYPE_DT] = { .name = "type", .type = BLOBMSG_TYPE_STRING },
-	[DATA_DT] = { .name = "data", .type = BLOBMSG_TYPE_STRING },
-};
-
 int parse_msg(void *obj, struct msg **msg_ptr)
 {
-	struct blob_attr *mb[__MSG_MAX];
-	struct blob_attr *dtb[__DT_MAX];
+	struct json_object *json;
+	struct json_object *child;
+	struct array_list *body;
 	struct msg *msg;
-	struct blob_attr *cur;
-	static struct blob_buf b;
-	int rem;
 	char *dt;
 	struct msg_dt *mdt;
+	int rc, len;
 
 	char *msg_str = (char*)obj;
 	if ((msg = (struct msg*)calloc(1, sizeof(struct msg))) == NULL)
 		goto err;
 	*msg_ptr = msg;
-	blob_buf_init(&b, 0);
-	if (!blobmsg_add_json_from_string(&b, msg_str))
+	if ((json = json_tokener_parse(msg_str)) == NULL)
 		goto fail;
-	blobmsg_parse(msg_policy, __MSG_MAX, mb, blob_data(b.head), blob_len(b.head));
-	if (!mb[SND_MSG]) {
+	if ((rc = json_object_object_get_ex(json, "sender", &child)) != 1)
 		goto fail;
-	} else {
-		char *dt = blobmsg_get_string(mb[SND_MSG]);
-		if ((msg->sender = (char*)malloc(strlen(dt) + 1)) == NULL)
-			goto err;
-		strcpy(msg->sender, dt);
-	}
-	if (!mb[BODY_MSG])
-		goto fail;
+	dt = json_object_get_string(child);
+	if ((msg->sender = (char*)malloc(strlen(dt) + 1)) == NULL)
+		goto err;
+	strcpy(msg->sender, dt);
+
 	if ((msg->body = new_glist(8)) == NULL)
 		goto err;
-	blobmsg_for_each_attr(cur, mb[BODY_MSG], rem) {
-		blobmsg_parse(dt_policy, __DT_MAX, dtb, blobmsg_data(cur), \
-							blobmsg_data_len(cur));
-		if (!dtb[TYPE_DT] || !dtb[DATA_DT])
+
+	if ((rc = json_object_object_get_ex(json, "body", &child)) == NULL)
+		goto fail;
+	
+	if ((body = json_object_get_array(child)) == NULL)
+		goto fail;
+	for (int i = 0; i < array_list_length(body); i++){
+		if ((json = (struct json_object*)array_list_get_idx(body, i)) == NULL)
 			goto fail;
+
 		if ((mdt = (struct msg_dt*)calloc(1, sizeof(struct msg_dt))) == NULL)
 			goto err;
-		if ((dt = (char*)malloc(strlen(blobmsg_get_string(dtb[TYPE_DT])) + 1)) == NULL)
+		if ((rc = json_object_object_get_ex(json, "type", &child)) != 1)
+			goto fail;
+		if ((len = json_object_get_string_len(child)) == 0)
+			goto fail;
+		if ((mdt->type = (char*)malloc(len + 1)) == NULL)
 			goto err;
-		strcpy(dt, blobmsg_get_string(dtb[TYPE_DT]));
-		mdt->type = dt;
-		if ((dt = (char*)malloc(strlen(blobmsg_get_string(dtb[DATA_DT])) + 1)) == NULL)
+		strcpy(mdt->type, json_object_get_string(child));
+
+		if ((rc = json_object_object_get_ex(json, "data", &child)) != 1)
+			goto fail;
+		if ((len = json_object_get_string_len(child)) == 0)
+			goto fail;
+		if ((mdt->data = (char*)malloc(len + 1)) == NULL)
 			goto err;
-		strcpy(dt, blobmsg_get_string(dtb[DATA_DT]));
-		mdt->data = dt;
+		strcpy(mdt->data, json_object_get_string(child));
+		
+
 		if (push_glist(msg->body, mdt) != 0)
 			goto err;
 	}

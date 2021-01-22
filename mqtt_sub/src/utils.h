@@ -100,11 +100,6 @@ struct client_data{
 	syslog(LOG_ERR, "%s\n", err)
 #endif
 
-//tests if all topics have given status
-int test_all_t_status(struct client_data *client, int status);
-//generates random string of given size 
-char *rand_string(char *str, size_t size);
-
 void free_client (struct client_data *client);
 void free_msg(struct msg *msg);
 void free_top_cb(void *obj);

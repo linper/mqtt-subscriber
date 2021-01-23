@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <uci.h>
 #include "sqlite3.h"
 #include "utils.h"

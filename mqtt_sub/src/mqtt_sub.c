@@ -27,17 +27,17 @@ void on_message(struct mosquitto *mosq, void *obj, \
 	struct msg *msg;
 	if ((rc = parse_msg(message->payload, &msg)) != SUB_SUC){
 		if (rc == SUB_GEN_ERR)
-			interupt = INT_PRE_DISC;
+			goto error;
 		else
 			return;
 	}
 	struct topic_data *top;
 	struct client_data *client = (struct client_data*)obj;
-	if ((top = get_top_by_name(client->tops, message->topic)) == NULL){
-		interupt = INT_PRE_DISC;
-		return;
-	}
-	filter_msg(top, msg);	
+	if ((top = get_top_by_name(client->tops, message->topic)) == NULL)
+		goto error;
+	filter_msg(top, msg);
+	if (handle_events(top->events, msg->body) != SUB_SUC)
+		goto error;
 	struct msg_dt *mdt;
 	size_t n = count_glist(msg->body);
 
@@ -46,11 +46,14 @@ void on_message(struct mosquitto *mosq, void *obj, \
 		char buff[strlen(mdt->type) + strlen(mdt->data) + 3];
 		sprintf(buff, "%s: %s", mdt->type, mdt->data);
 		if (log_db(client->db, &(client->n_msg), message->topic, buff) \
-								!= SUB_SUC){
-			interupt = INT_PRE_DISC;
-			return;
-		}
+								!= SUB_SUC)
+			goto error;
 	}
+	return;
+	error:
+		interupt = INT_PRE_DISC;
+		return;
+		
 }
 
 void on_connect(struct mosquitto *mosq, void *obj, int rc)
@@ -120,31 +123,37 @@ int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 	int rc = 0;
 	struct mosquitto *mosq;
 	char *id = NULL;
+	char *err = NULL;
 	struct connect_data *con = client->con;
 
 	if (!con->is_clean)
 		id = rand_string(id, 31);
 	if ((mosq = mosquitto_new(id, con->is_clean, client)) == NULL)
-		return SUB_GEN_ERR;
+		goto error;
 
 	*mosq_ptr = mosq;
 	if (con->username != NULL && con->password != NULL)
 		if ((rc = mosquitto_username_pw_set(mosq, con->username,\
 		con->password)) != EXIT_SUCCESS)
-			return SUB_GEN_ERR;
+			goto error;
 	
 	if (con->use_tls){
 		if(con->tls_insecure && (rc = mosquitto_tls_insecure_set(mosq, \
 						true)) != MOSQ_ERR_SUCCESS)
-			return SUB_GEN_ERR;
+			goto error;
 		if ((rc = mosquitto_tls_set(mosq, con->cafile, NULL, \
 		con->certfile, con->keyfile, NULL)) != EXIT_SUCCESS){
-			log_err("MQTT subscriber TLS error");
-			return SUB_GEN_ERR;
+			err = "MQTT subscriber TLS error";
+			goto error;
 		}
 	}
 
 	return SUB_SUC;
+	error:
+		if (err)
+			log_err(err);
+		else
+			log_err("MQTT subscriber client init error");
 }
 
 int connect_to_broker(struct mosquitto *mosq, struct client_data *client)

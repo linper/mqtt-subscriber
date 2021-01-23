@@ -53,8 +53,12 @@ struct event_data{
 	int t_id;
 	char *field;
 	enum ev_dt type;
-	void *target;
 	enum ev_rules rule;
+	// void *target;
+	union{
+		long lng;
+		char *str;
+	} target;
 };
 
 struct topic_data{

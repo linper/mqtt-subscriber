@@ -2,7 +2,7 @@
 #define PARSER_H
 
 #include <stdlib.h>
-#include "json-c/json.h"
+#include <json-c/json.h>
 #include "utils.h"
 #include "glist.h"
 

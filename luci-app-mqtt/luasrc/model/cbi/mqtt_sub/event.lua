@@ -21,9 +21,9 @@ m.uci:foreach("mqtt_sub", "topic", function(s)
 	o:value(s.id, s.topic)
 end)
 
-o = s:option(ListValue, "datatype", translate("Data type"))
-o:value("0", translate("Integer"))
-o:value("1", translate("String"))
+dtype = s:option(ListValue, "datatype", translate("Data type"))
+dtype:value("0", translate("Integer"))
+dtype:value("1", translate("String"))
 
 o = s:option(Value, "field", translate("Data field"), translate("Data of this datafield will be compared with target"))
 o.datatype = "string"
@@ -55,8 +55,13 @@ o.placeholder = translate("Target")
 o.rmempty = false
 o.parse = function(self, section, novld, ...)
 	local value = self:formvalue(section)
+	local dtt = dtype:formvalue(section)
+	local t = self.map:get(section, "target")
 	if value == nil or value == "" then
 		self.map:error_msg(translate("Target can not be empty"))
+		self.map.save = false
+	elseif dtt == "0" and tonumber(value, 10) == nil then
+		self.map:error_msg(translate("Target is not right data type"))
 		self.map.save = false
 	end
 	Value.parse(self, section, novld, ...)

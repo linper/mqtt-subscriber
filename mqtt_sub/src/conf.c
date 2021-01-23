@@ -2,14 +2,17 @@
 
 int get_conf(struct client_data *client){
 	if (get_con_conf(client) != SUB_SUC)
-		return SUB_GEN_ERR;
+		goto error;
 	if (get_top_conf(client) != SUB_SUC)
-		return SUB_GEN_ERR;
+		goto error;
 	if (get_ev_conf(client) != SUB_SUC)
-		return SUB_GEN_ERR;
+		goto error;
 	if (link_ev(client) != SUB_SUC)
-		return SUB_GEN_ERR;
+		goto error;
 	return SUB_SUC;
+	error:
+		log_err("MQTT subscriber bad configurations");
+		return SUB_GEN_ERR;
 }
 
 int get_con_conf(struct client_data *client)
@@ -226,6 +229,7 @@ int get_ev_conf(struct client_data *client)
 	const size_t PATH_LEN = 256;
 	char path[PATH_LEN];
 	int i = 0;
+	char* p;
 
 	c = uci_alloc_context();
 	strcpy(path, "mqtt_sub");
@@ -244,7 +248,7 @@ int get_ev_conf(struct client_data *client)
 		sprintf(path, "mqtt_sub.@event[%d].enabled", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
 			goto fail;
-		if (ptr.o == NULL || atol(ptr.o->v.string) != 1){
+		if (ptr.o == NULL || strtol(ptr.o->v.string, &p, 10) != 1){
 			i++;
 			continue;
 		}
@@ -260,21 +264,30 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 		if (ptr.o == NULL)
 			goto fail;
-		curr_ev->t_id = atol(ptr.o->v.string);
+		// curr_ev->t_id = atol(ptr.o->v.string);
+		curr_ev->t_id = strtol(ptr.o->v.string, &p, 10);
+		if (curr_ev->t_id == 0 && errno == EINVAL)
+			goto fail;
 		//geting t_id value
 		sprintf(path, "mqtt_sub.@event[%d].datatype", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
 			goto fail;
 		if (ptr.o == NULL)
 			goto fail;
-		curr_ev->type = atol(ptr.o->v.string);
+		// curr_ev->type = atol(ptr.o->v.string);
+		curr_ev->type = strtol(ptr.o->v.string, &p, 10);
+		if (curr_ev->type == 0 && errno == EINVAL)
+			goto fail;
 		//geting rule value
 		sprintf(path, "mqtt_sub.@event[%d].rule", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
 			goto fail;
 		if (ptr.o == NULL)
 			goto fail;
-		curr_ev->rule = atol(ptr.o->v.string);
+		// curr_ev->rule = atol(ptr.o->v.string);
+		curr_ev->rule = strtol(ptr.o->v.string, &p, 10);
+		if (curr_ev->rule == 0 && errno == EINVAL)
+			goto fail;
 		// geting event name value
 		sprintf(path, "mqtt_sub.@event[%d].field", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK && \
@@ -293,11 +306,13 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 			
 		if (curr_ev->type == EV_DT_LNG){
-			curr_ev->target = (long*)malloc(sizeof(long));
-			*(long*)(curr_ev->target) = atol(ptr.o->v.string);
+			// curr_ev->target.lng = atol(ptr.o->v.string);
+			curr_ev->target.lng = strtol(ptr.o->v.string, &p, 10);
+			if (curr_ev->target.lng == 0 && errno == EINVAL)
+				goto fail;
 		} else {
-			curr_ev->target = (char*)malloc(strlen(ptr.o->v.string)+1);
-			strcpy(curr_ev->target, ptr.o->v.string);
+			curr_ev->target.str = (char*)malloc(strlen(ptr.o->v.string)+1);
+			strcpy(curr_ev->target.str, ptr.o->v.string);
 		}
 		i++;
 	}

@@ -60,7 +60,8 @@ void free_ev_cb(void *obj)
 	if (obj){
 		struct event_data *event = (struct event_data*)obj;
 		free(event->field);
-		free(event->target);
+		if (event->type == EV_DT_STR)
+			free(event->target.str);
 		free(event);
 
 	}

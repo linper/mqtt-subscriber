@@ -28,46 +28,47 @@ int handle_events(struct glist *events, struct glist *dt_list)
 
 int check_event(struct event_data *e, struct msg_dt *dt)
 {
-	char *s_val, p;
-	long l_val;
+	long num_val;
 	bool res;
-	if (e->type == EV_DT_LNG && (l_val = strtol(dt->data, &p, 10)) == 0 && \
-								errno == EINVAL)
+	if (e->type == EV_DT_LNG && str_to_long(dt->data, &num_val) != SUB_SUC)
 		return SUB_FAIL;
+	else if (e->type == EV_DT_DBL && str_to_double(dt->data, &num_val) != SUB_SUC)
+		return SUB_FAIL;
+	
 	switch (e->rule){
 	case EV_R_EQ:
-		if (e->type == EV_DT_LNG)
-			res = l_val == e->target.lng;
+		if (e->type != EV_DT_STR)
+			res = num_val == e->target.lng;
 		else
 			res = (strcmp(dt->data, e->target.str) == 0);
 		break;
 	case EV_R_NEQ:
-		if (e->type == EV_DT_LNG)
-			res = l_val != e->target.lng;
+		if (e->type != EV_DT_STR)
+			res = num_val != e->target.lng;
 		else
 			res = (strcmp(dt->data, e->target.str) != 0);
 		break;
 	case EV_R_MT:
-		if (e->type == EV_DT_LNG)
-			res = l_val > e->target.lng;
+		if (e->type != EV_DT_STR)
+			res = num_val > e->target.lng;
 		else
 			res = (strcmp(dt->data, e->target.str) > 0);
 		break;
 	case EV_R_LT:
-		if (e->type == EV_DT_LNG)
-			res = l_val < e->target.lng;
+		if (e->type != EV_DT_STR)
+			res = num_val < e->target.lng;
 		else
 			res = (strcmp(dt->data, e->target.str) < 0);
 		break;
 	case EV_R_ME:
-		if (e->type == EV_DT_LNG)
-			res = l_val >= e->target.lng;
+		if (e->type != EV_DT_STR)
+			res = num_val >= e->target.lng;
 		else
 			res = (strcmp(dt->data, e->target.str) >= 0);
 		break;
 	case EV_R_LE:
-		if (e->type == EV_DT_LNG)
-			res = l_val <= e->target.lng;
+		if (e->type != EV_DT_STR)
+			res = num_val <= e->target.lng;
 		else
 			res = (strcmp(dt->data, e->target.str) <= 0);
 		break;

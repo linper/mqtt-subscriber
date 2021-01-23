@@ -65,6 +65,9 @@ FileUpload.sizetext = translate("Selected file is too large, max 256 KiB")
 FileUpload.sizetextempty = translate("Selected file is empty")
 FileUpload.unsafeupload = true
 
+is_clean = s:option(Flag, "is_clean", translate("Clean"), translate("If session is clean, Broker will not store client subscriptions and missed messages"))
+is_clean:depends("enabled", "1")
+
 tls_enabled = s:option(Flag, "tls", "TLS", "Select to enable TLS encryption")
 tls_enabled:depends("enabled", "1")
 

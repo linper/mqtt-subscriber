@@ -123,11 +123,12 @@ int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 	int rc = 0;
 	struct mosquitto *mosq;
 	char *id = NULL;
+	char id_buff[30];
 	char *err = NULL;
 	struct connect_data *con = client->con;
 
 	if (!con->is_clean)
-		id = rand_string(id, 31);
+		id = rand_string(id_buff, sizeof(id_buff));
 	if ((mosq = mosquitto_new(id, con->is_clean, client)) == NULL)
 		goto error;
 

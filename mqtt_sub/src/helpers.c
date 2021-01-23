@@ -67,3 +67,38 @@ void filter_msg(struct topic_data *top, struct msg *msg)
 		}
 	}
 }
+
+int str_to_int(char* str, int *res)
+{
+	char *p;
+	errno = 0;
+	long l = strtol(str, &p, 10);
+	if ((errno == ERANGE && (l == LONG_MAX || l == LONG_MIN)) || \
+						(errno != 0 && l == 0))
+		return SUB_GEN_ERR;
+	*res = (int)l;
+	return SUB_SUC;
+}
+
+int str_to_long(char* str, long *res)
+{
+	char *p;
+	errno = 0;
+	*res = strtol(str, &p, 10);
+	if ((errno == ERANGE && (*res == LONG_MAX || *res == LONG_MIN)) || \
+						(errno != 0 && *res == 0))
+		return SUB_GEN_ERR;
+	return SUB_SUC;
+}
+
+int str_to_double(char* str, double *res)
+{
+	char *p;
+	errno = 0;
+	*res = strtod(str, &p);
+	if ((errno == ERANGE && (*res == HUGE_VALF || *res == HUGE_VALL)) || \
+						(errno != 0 && *res == 0))
+		return SUB_GEN_ERR;
+	return SUB_SUC;
+}
+

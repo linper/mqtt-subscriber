@@ -26,7 +26,7 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 	if ((msg->body = new_glist(8)) == NULL)
 		goto err;
 
-	if ((rc = json_object_object_get_ex(json, "body", &child)) == NULL)
+	if ((rc = json_object_object_get_ex(json, "body", &child)) != 1)
 		goto fail;
 	
 	if ((body = json_object_get_array(child)) == NULL)
@@ -57,8 +57,7 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 		if (push_glist(msg->body, mdt) != 0)
 			goto err;
 	}
-	suc:
-		return SUB_SUC;
+	return SUB_SUC;
 	fail:
 		free_msg(msg);
 		return SUB_FAIL;

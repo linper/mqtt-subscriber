@@ -2,8 +2,8 @@
 #define EVENT_H
 
 #include <stdlib.h>
-#include <errno.h>
 #include "utils.h"
+#include "helpers.h"
 #include "helpers.h"
 
 //it's basiclly main() for event checking

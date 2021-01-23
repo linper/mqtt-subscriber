@@ -29,6 +29,7 @@ enum ev_rules{
 
 enum ev_dt{
 	EV_DT_LNG,
+	EV_DT_DBL,
 	EV_DT_STR,
 };
 
@@ -54,9 +55,9 @@ struct event_data{
 	char *field;
 	enum ev_dt type;
 	enum ev_rules rule;
-	// void *target;
 	union{
 		long lng;
+		double dbl;
 		char *str;
 	} target;
 };

@@ -23,7 +23,8 @@ end)
 
 dtype = s:option(ListValue, "datatype", translate("Data type"))
 dtype:value("0", translate("Integer"))
-dtype:value("1", translate("String"))
+dtype:value("1", translate("Double"))
+dtype:value("2", translate("String"))
 
 o = s:option(Value, "field", translate("Data field"), translate("Data of this datafield will be compared with target"))
 o.datatype = "string"
@@ -60,7 +61,7 @@ o.parse = function(self, section, novld, ...)
 	if value == nil or value == "" then
 		self.map:error_msg(translate("Target can not be empty"))
 		self.map.save = false
-	elseif dtt == "0" and tonumber(value, 10) == nil then
+	elseif dtt ~= "2" and tonumber(value, 10) == nil then
 		self.map:error_msg(translate("Target is not right data type"))
 		self.map.save = false
 	end

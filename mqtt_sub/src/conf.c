@@ -19,66 +19,63 @@ int get_con_conf(struct client_data *client)
 {
 	struct connect_data *con = (struct connect_data*)calloc(1, \
 						sizeof(struct connect_data));
+	if (!con)
+		return SUB_GEN_ERR;
 	client->con = con;
 	struct uci_context *c;
 	struct uci_ptr ptr;
 	int rc;
 	const size_t PATH_LEN = 256;
 	char path[PATH_LEN];
+	void *m;
 
 	c = uci_alloc_context();
 	//getting remote port
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.remote_port", \
-							PATH_LEN)) != SUB_SUC)
+					PATH_LEN)) != SUB_SUC || ptr.o == NULL)
 		goto fail;
-	if (ptr.o != NULL)
-		con->port = atol(ptr.o->v.string);
+	if(str_to_int(ptr.o->v.string, &con->port) != SUB_SUC)
+		goto fail;
 	//geting remote broker address
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.remote_addr", \
-							PATH_LEN)) != SUB_SUC)
+					PATH_LEN)) != SUB_SUC || ptr.o == NULL)
 		goto fail;
-	if (ptr.o != NULL)
-		con->host = strcpy(malloc(strlen(ptr.o->v.string)+1), \
-							ptr.o->v.string);
+	if ((m = malloc(strlen(ptr.o->v.string) + 1)) == NULL)
+		goto fail;
+	con->host = strcpy(m, ptr.o->v.string);
 	//geting remote username
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.username", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr.o != NULL)
-		con->username = strcpy(malloc(strlen(ptr.o->v.string)+1), \
-							ptr.o->v.string);
+					PATH_LEN)) == SUB_SUC && ptr.o != NULL){
+		if ((m = malloc(strlen(ptr.o->v.string) + 1)) == NULL)
+			goto fail;
+		con->username = strcpy(m, ptr.o->v.string);
+	}
 	//geting remote password
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.password", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr.o != NULL)
-		con->password = strcpy(malloc(strlen(ptr.o->v.string)+1), \
-							ptr.o->v.string);
+					PATH_LEN)) == SUB_SUC && ptr.o != NULL){
+		if ((m = malloc(strlen(ptr.o->v.string) + 1)) == NULL)
+			goto fail;
+		con->password = strcpy(m, ptr.o->v.string);
+	}
 	//geting keep alive value
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.keep_alive", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr.o != NULL)
-		con->keep_alive = atol(ptr.o->v.string);
-	else
+					PATH_LEN)) != SUB_SUC || ptr.o == NULL)
+	con->keep_alive = 60; //default 60 seconds
+	else if(str_to_int(ptr.o->v.string, &con->keep_alive) != SUB_SUC)
 		con->keep_alive = 60; //default 60 seconds
+
 	//geting is_clean session value
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.is_clean", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr.o != NULL && strcmp("0", ptr.o->v.string) == 0)
-		con->is_clean = false;
-	else
+		PATH_LEN)) == SUB_SUC && ptr.o != NULL && strcmp("1", \
+							ptr.o->v.string) == 0)
 		con->is_clean = true;
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.tls", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
-		con->use_tls = true;
-		if ((rc = get_tls_conf(c, &ptr, con)) != SUB_SUC)
-			goto fail;
-	}
-
+		PATH_LEN)) == SUB_SUC && ptr.o != NULL && strcmp("1", \
+							ptr.o->v.string) == 0){
+			con->use_tls = true;
+			if ((rc = get_tls_conf(c, &ptr, con)) != SUB_SUC)
+				goto fail;
+		}
 	uci_free_context(c);
 	return SUB_SUC;
 
@@ -93,34 +90,37 @@ int get_tls_conf(struct uci_context* c, struct uci_ptr *ptr, \
 	int rc;
 	const size_t PATH_LEN = 256;
 	char path[PATH_LEN];
+	void *m;
 
 	//geting tls_insecure value
 	if ((rc = get_conf_ptr(c, ptr, path, "mqtt_sub.mqtt_sub.tls_insecure", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr->o != NULL && strcmp("1", ptr->o->v.string) == 0)
+		PATH_LEN)) == SUB_SUC && ptr->o != NULL && strcmp("1", \
+							ptr->o->v.string) == 0)
 		con->tls_insecure = true;
 	//geting cafile name
 	if ((rc = get_conf_ptr(c, ptr, path, "mqtt_sub.mqtt_sub.cafile", \
-							PATH_LEN)) != SUB_SUC)
+					PATH_LEN)) != SUB_SUC || ptr->o == NULL)
 		goto fail;
-	if (ptr->o != NULL && ptr->o->v.string != NULL)
-		con->cafile = strcpy((char*)malloc(strlen(ptr->o->v.string) + \
-							1), ptr->o->v.string);
+	if ((con->cafile = malloc(strlen(ptr->o->v.string) + 1)) == NULL)
+		goto fail;
+	if ((strcpy(con->cafile, ptr->o->v.string) == NULL))
+		goto fail;
 	//geting certfile name
 	if ((rc = get_conf_ptr(c, ptr, path, "mqtt_sub.mqtt_sub.certfile", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr->o != NULL && ptr->o->v.string != NULL)
-		con->certfile = strcpy((char*)malloc(strlen(ptr->o->v.string) \
-							+ 1), ptr->o->v.string);
+					PATH_LEN)) == SUB_SUC && ptr->o != NULL){
+		if ((m = malloc(strlen(ptr->o->v.string) + 1)) == NULL)
+			goto fail;
+		if ((con->certfile = strcpy(m, ptr->o->v.string)) == NULL)
+			goto fail;
+	}
 	//geting keyfile name
 	if ((rc = get_conf_ptr(c, ptr, path, "mqtt_sub.mqtt_sub.keyfile", \
-							PATH_LEN)) != SUB_SUC)
-		goto fail;
-	if (ptr->o != NULL && ptr->o->v.string != NULL)
-		con->keyfile = strcpy((char*)malloc(strlen(ptr->o->v.string) + \
-							1), ptr->o->v.string);
+					PATH_LEN)) == SUB_SUC && ptr->o != NULL){
+		if ((m = malloc(strlen(ptr->o->v.string) + 1)) == NULL)
+			goto fail;
+		if ((con->keyfile = strcpy(m, ptr->o->v.string)) == NULL)
+			goto fail;
+	}
 		
 	return SUB_SUC;
 	fail:
@@ -136,10 +136,11 @@ int get_top_conf(struct client_data *client)
 	const size_t PATH_LEN = 256;
 	char path[PATH_LEN];
 	int i = 0;
+	void *m;
 
 	c = uci_alloc_context();
 	strcpy(path, "mqtt_sub");
-	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
+	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || ptr.p == NULL)
 		goto fail;
 	if ((client->tops = new_glist(0)) == NULL)
 		goto fail;
@@ -152,16 +153,13 @@ int get_top_conf(struct client_data *client)
 
 		//geting enabled value
 		sprintf(path, "mqtt_sub.@topic[%d].enabled", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
-			goto fail;
-		if (ptr.o == NULL || atol(ptr.o->v.string) != 1){
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+			ptr.o == NULL || strcmp(ptr.o->v.string, "0") == 0){
 			i++;
 			continue;
 		}
-
-		curr_topic = (struct topic_data*)calloc(1, \
-						sizeof(struct topic_data));
-		if (push_glist(client->tops, curr_topic) != 0)
+		if ((curr_topic = (struct topic_data*)calloc(1, \
+					sizeof(struct topic_data))) == NULL)
 			goto fail;
 		if ((curr_topic->events = new_glist(8)) == NULL)
 			goto fail;
@@ -170,45 +168,51 @@ int get_top_conf(struct client_data *client)
 		sprintf(path, "mqtt_sub.@topic[%d].id", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
-		if (ptr.o == NULL)
 			goto fail;
-		curr_topic->id = atol(ptr.o->v.string);
+		if(str_to_int(ptr.o->v.string, &curr_topic->id) != SUB_SUC)
+			goto fail;
 		//geting topic name value
 		sprintf(path, "mqtt_sub.@topic[%d].topic", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
-		curr_topic->name = (char*)malloc(strlen(ptr.o->v.string)+1);
+		if ((curr_topic->name = malloc(strlen(ptr.o->v.string) + 1)) == NULL)
+			goto fail;
 		strcpy(curr_topic->name, ptr.o->v.string);
 		//geting want_retained value
 		sprintf(path, "mqtt_sub.@topic[%d].want_retained", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
-			goto fail;
-		if (ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
+			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0)
 			curr_topic->want_retained = true;
-		else 
-			curr_topic->want_retained = false;
 		//geting constrain value
 		sprintf(path, "mqtt_sub.@topic[%d].constrain", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
-			goto fail;
-		if (ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
+			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
 			curr_topic->constrain = true;
 			if((curr_topic->fields = new_glist(0)) == NULL)
 				goto fail;
 			sprintf(path, "mqtt_sub.@topic[%d].type", i);
-			if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
+			if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != \
+						UCI_OK || ptr.o == NULL)
 				goto fail;
 			struct uci_element *e;
-			uci_foreach_element(&ptr.o->v.list, e) { //TODO fix heare
-				char *c  = (char*)malloc(strlen(e->name)+1);
-				strcpy(c, e->name);
-				push_glist(curr_topic->fields, c);
+			uci_foreach_element(&ptr.o->v.list, e) {
+				if ((m = malloc(strlen(e->name) + 1)) == NULL)
+					goto fail;
+				strcpy(m, e->name);
+				push_glist(curr_topic->fields, m);
+			}
+			char *cf;
+			for (int i = 0; i < count_glist(curr_topic->fields); i++){
+				cf = get_glist(curr_topic->fields, i);
 			}
 
 		} else {
 			curr_topic->constrain = false;
 		}
+
+		if (push_glist(client->tops, curr_topic) != 0)
+			goto fail;
 		i++;
 	}
 	
@@ -229,11 +233,10 @@ int get_ev_conf(struct client_data *client)
 	const size_t PATH_LEN = 256;
 	char path[PATH_LEN];
 	int i = 0;
-	char* p;
 
 	c = uci_alloc_context();
 	strcpy(path, "mqtt_sub");
-	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
+	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || ptr.p == NULL)
 		goto fail;
 	if ((client->events = new_glist(0)) == NULL)
 		goto fail;
@@ -246,74 +249,64 @@ int get_ev_conf(struct client_data *client)
 		
 		//geting enabled value
 		sprintf(path, "mqtt_sub.@event[%d].enabled", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
-			goto fail;
-		if (ptr.o == NULL || strtol(ptr.o->v.string, &p, 10) != 1){
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+			ptr.o == NULL || strcmp("1", ptr.o->v.string) != 0){
 			i++;
 			continue;
 		}
 
-		curr_ev = (struct event_data*)calloc(1, \
-						sizeof(struct event_data));
-		if (push_glist(client->events, curr_ev) != 0)
+		if ((curr_ev = (struct event_data*)calloc(1, \
+					sizeof(struct event_data))) == NULL)
 			goto fail;
 
 		//geting event t_id value
 		sprintf(path, "mqtt_sub.@event[%d].t_id", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
 			goto fail;
-		if (ptr.o == NULL)
-			goto fail;
-		// curr_ev->t_id = atol(ptr.o->v.string);
-		curr_ev->t_id = strtol(ptr.o->v.string, &p, 10);
-		if (curr_ev->t_id == 0 && errno == EINVAL)
+		if(str_to_int(ptr.o->v.string, &curr_ev->t_id) != SUB_SUC)
 			goto fail;
 		//geting t_id value
 		sprintf(path, "mqtt_sub.@event[%d].datatype", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
 			goto fail;
-		if (ptr.o == NULL)
-			goto fail;
-		// curr_ev->type = atol(ptr.o->v.string);
-		curr_ev->type = strtol(ptr.o->v.string, &p, 10);
-		if (curr_ev->type == 0 && errno == EINVAL)
+		if(str_to_int(ptr.o->v.string, &curr_ev->type) != SUB_SUC)
 			goto fail;
 		//geting rule value
 		sprintf(path, "mqtt_sub.@event[%d].rule", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
 			goto fail;
-		if (ptr.o == NULL)
-			goto fail;
-		// curr_ev->rule = atol(ptr.o->v.string);
-		curr_ev->rule = strtol(ptr.o->v.string, &p, 10);
-		if (curr_ev->rule == 0 && errno == EINVAL)
+		if(str_to_int(ptr.o->v.string, &curr_ev->rule) != SUB_SUC)
 			goto fail;
 		// geting event name value
 		sprintf(path, "mqtt_sub.@event[%d].field", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK && \
-								ptr.o != NULL)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
 			goto fail;
-		if (ptr.o == NULL || ptr.o->v.string == NULL)
+		if ((curr_ev->field = (char*)malloc(strlen(ptr.o->v.string) + 1)) == NULL)
 			goto fail;
-		curr_ev->field = (char*)malloc(strlen(ptr.o->v.string)+1);
 		strcpy(curr_ev->field, ptr.o->v.string);
 		//geting event target value
 		sprintf(path, "mqtt_sub.@event[%d].target", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK && \
-								ptr.o != NULL)
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
 			goto fail;
-		if (ptr.o == NULL || ptr.o->v.string == NULL)
+		if (curr_ev->type == EV_DT_LNG && str_to_long(ptr.o->v.string, \
+					&curr_ev->target.lng) != SUB_SUC){
 			goto fail;
-			
-		if (curr_ev->type == EV_DT_LNG){
-			// curr_ev->target.lng = atol(ptr.o->v.string);
-			curr_ev->target.lng = strtol(ptr.o->v.string, &p, 10);
-			if (curr_ev->target.lng == 0 && errno == EINVAL)
-				goto fail;
+		} else if (curr_ev->type == EV_DT_DBL && str_to_long(ptr.o->v.string, \
+					&curr_ev->target.dbl) != SUB_SUC){
+			goto fail;
 		} else {
-			curr_ev->target.str = (char*)malloc(strlen(ptr.o->v.string)+1);
+			if ((curr_ev->target.str = (char*)malloc(strlen(ptr.o->v.string) + 1)) == NULL)
+				goto fail;
 			strcpy(curr_ev->target.str, ptr.o->v.string);
 		}
+
+		if (push_glist(client->events, curr_ev) != 0)
+			goto fail;
 		i++;
 	}
 	success:

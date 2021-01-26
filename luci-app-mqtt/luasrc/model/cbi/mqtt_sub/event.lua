@@ -33,11 +33,12 @@ o:depends("enabled", "1")
 o.datatype = "string"
 o.maxlength = 65536
 o.placeholder = translate("Data field")
-o.rmempty = false
+-- o.rmempty = false
 o.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
 	local value = self:formvalue(section)
-	if value == nil or value == "" then
-		self.map:error_msg(translate("Data field can not be empty"))
+	if enabled and (value == nil or value == "") then
+		self:add_error(section, "invalid", translate("Error: data field can not be empty"))
 		self.map.save = false
 	end
 	Value.parse(self, section, novld, ...)
@@ -58,17 +59,19 @@ o:depends("enabled", "1")
 o.datatype = "string"
 o.maxlength = 65536
 o.placeholder = translate("Target")
-o.rmempty = false
 o.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
 	local value = self:formvalue(section)
 	local dtt = dtype:formvalue(section)
 	local t = self.map:get(section, "target")
-	if value == nil or value == "" then
-		self.map:error_msg(translate("Target can not be empty"))
-		self.map.save = false
-	elseif dtt ~= "2" and tonumber(value, 10) == nil then
-		self.map:error_msg(translate("Target is not right data type"))
-		self.map.save = false
+	if enabled then
+		if value == nil or value == "" then
+			self.map:error_msg(translate("Target can not be empty"))
+			self.map.save = false
+		elseif dtt ~= "2" and tonumber(value, 10) == nil then
+			self:add_error(section, "invalid", translate("Error: target is not right data type"))
+			self.map.save = false
+		end
 	end
 	Value.parse(self, section, novld, ...)
 end
@@ -77,11 +80,11 @@ username = s:option(Value, "username", "Sender e-mail", "Specify sender email")
 username.datatype = "credentials_validate"
 username.placeholder = translate("Sender e-mail")
 username:depends("enabled", "1")
-o.rmempty = false
 username.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
 	local pass = luci.http.formvalue("cbid.mqtt_sub.m"..section..".password")
 	local value = self:formvalue(section)
-	if pass ~= nil and pass ~= "" and (value == nil or value == "") then
+	if enabled and pass ~= nil and pass ~= "" and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: username is empty but password is not")
 	end
 	Value.parse(self, section, novld, ...)
@@ -92,11 +95,11 @@ password:depends("enabled", "1")
 password.password = true
 password.datatype = "credentials_validate"
 password.placeholder = translate("Password")
-o.rmempty = false
 password.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
 	local pass = luci.http.formvalue("cbid.mqtt_sub.m"..section..".username")
 	local value = self:formvalue(section)
-	if user ~= nil and user ~= "" and (value == nil or value == "") then
+	if enabled and user ~= nil and user ~= "" and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: password is empty but username is not")
 	end
 	Value.parse(self, section, novld, ...)
@@ -107,10 +110,10 @@ mail_srv:depends("enabled", "1")
 mail_srv.placeholder  = "smtps://smtp.gmail.com:465"
 mail_srv.datatype = "string"
 mail_srv.maxlength = 4096
-o.rmempty = false
 mail_srv.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
 	local value = self:formvalue(section)
-	if value == nil or value == "" then
+	if enabled and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: mail server is empty")
 	end
 	Value.parse(self, section, novld, ...)
@@ -123,8 +126,9 @@ receiver:depends("enabled", "1")
 o.rmempty = false
 receiver.maxlength = 4096
 receiver.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
 	local value = self:formvalue(section)
-	if value == nil or value == "" then
+	if enabled and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: receiver e-mail is empty")
 	end
 	Value.parse(self, section, novld, ...)

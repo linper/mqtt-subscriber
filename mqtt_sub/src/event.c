@@ -1,8 +1,9 @@
 #include "event.h"
 
-int handle_events(struct glist *events, struct glist *dt_list)
+int handle_events(struct topic_data *top, struct glist *dt_list)
 {
 	int rc;
+	struct glist *events = top->events;
 	size_t n_ev = count_glist(events);
 	size_t n_dt = count_glist(dt_list);
 	struct event_data *e;
@@ -14,8 +15,8 @@ int handle_events(struct glist *events, struct glist *dt_list)
 			if (strcmp(e->field, dt->type) == 0 && \
 					(rc = check_event(e, dt)) == SUB_SUC){
 				printf("event: %s\n", e->field);
-				// if ((send_email()) != SUB_SUC)
-				// 	goto err;
+				if ((send_mail(e, dt, top->name)) != SUB_SUC)
+					goto error;
 			} else if (rc == SUB_GEN_ERR){
 				goto error;
 			}
@@ -34,7 +35,7 @@ int check_event(struct event_data *e, struct msg_dt *dt)
 		return SUB_FAIL;
 	else if (e->type == EV_DT_DBL && str_to_double(dt->data, &num_val) != SUB_SUC)
 		return SUB_FAIL;
-	
+
 	switch (e->rule){
 	case EV_R_EQ:
 		if (e->type != EV_DT_STR)

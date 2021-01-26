@@ -36,7 +36,7 @@ void on_message(struct mosquitto *mosq, void *obj, \
 	if ((top = get_top_by_name(client->tops, message->topic)) == NULL)
 		goto error;
 	filter_msg(top, msg);
-	if (handle_events(top->events, msg->body) != SUB_SUC)
+	if (handle_events(top, msg->body) != SUB_SUC)
 		goto error;
 	struct msg_dt *mdt;
 	size_t n = count_glist(msg->body);

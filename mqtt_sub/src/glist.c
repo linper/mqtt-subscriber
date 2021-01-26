@@ -80,6 +80,17 @@ int __shrink_glist(struct glist *lst)
 	return -1;
 }
 
+int __convert_index_glist(struct glist *lst, int *index){
+	int count = (int)lst->count;
+	int index_val = *index;
+	if ((count + index_val) < 0)
+		return -1;
+	if (index_val  >= 0)
+		return 0;
+	*index = count + index_val;
+	return 0;
+}
+
 int push_glist(struct glist *lst, void *value)
 {
 	if (lst->count == lst->cap && __extend_glist(lst) != 0)
@@ -88,13 +99,46 @@ int push_glist(struct glist *lst, void *value)
 	return 0;
 }
 
-int put_glist(struct glist *lst, void *value, size_t index)
+int push_glist2(struct glist *lst, void *value, size_t len)
+{
+	void *data;
+	if ((data = malloc(len)) == NULL)
+		return -1;
+	if (memcpy(data, value, len) == NULL)
+		return -1;
+	if (lst->count == lst->cap && __extend_glist(lst) != 0)
+		return -1;
+	lst->array[lst->count++] = data;
+	return 0;
+}
+
+int insert_glist(struct glist *lst, void *value, int index)
 {
 	if (lst->count == lst->cap && __extend_glist(lst) != 0)
 		return -1;
-	if (index > lst->count)
+	if (__convert_index_glist(lst, &index) == -1 || index > lst->count)
 		return -1;
+	for (size_t i = lst->count; i > index; i--)
+		lst->array[i] = lst->array[i-1];
 	lst->array[index] = value;
+	lst->count++;
+	return 0;
+}
+
+int insert_glist2(struct glist *lst, void *value, size_t len, int index)
+{
+	if (lst->count == lst->cap && __extend_glist(lst) != 0)
+		return -1;
+	if (__convert_index_glist(lst, &index) == -1 || index > lst->count)
+		return -1;
+	void *data;
+	if ((data = malloc(len)) == NULL)
+		return -1;
+	if (memcpy(data, value, len) == NULL)
+		return -1;
+	for (size_t i = lst->count; i > index; i--)
+		lst->array[i] = lst->array[i-1];
+	lst->array[index] = data;
 	lst->count++;
 	return 0;
 }
@@ -110,17 +154,17 @@ void *pop_glist(struct glist *lst)
 	return value;
 }
 
-void *get_glist(struct glist *lst, size_t index)
+void *get_glist(struct glist *lst, int index)
 {
-	if (index >= lst->count)
+	if (__convert_index_glist(lst, &index) == -1 || index >= lst->count)
 		return NULL;
 	void *value = lst->array[index];
 	return value;
 }
 
-void *remove_glist(struct glist *lst, size_t index)
+void *remove_glist(struct glist *lst, int index)
 {
-	if (index > lst->count)
+	if (__convert_index_glist(lst, &index) == -1 || index > lst->count)
 		return NULL;
 	void *value = lst->array[index];
 	for (size_t i = index; i < lst->count-1; i++)
@@ -132,9 +176,9 @@ void *remove_glist(struct glist *lst, size_t index)
 	return value;
 }
 
-int delete_glist(struct glist *lst, size_t index)
+int delete_glist(struct glist *lst, int index)
 {
-	if (index > lst->count)
+	if (__convert_index_glist(lst, &index) == -1 || index > lst->count)
 		return -1;
 	if (lst->free_cb != NULL)
 		lst->free_cb(lst->array[index]);

@@ -60,6 +60,10 @@ struct event_data{
 		double dbl;
 		char *str;
 	} target;
+	char *s_email;
+	char *s_pwd;
+	char *r_email;
+	char *mail_srv;
 };
 
 struct topic_data{

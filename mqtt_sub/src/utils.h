@@ -64,6 +64,12 @@ struct event_data{
 	char *s_pwd;
 	char *r_email;
 	char *mail_srv;
+	bool en_interv;
+	bool en_count;
+	long interval;
+	long last_ev_t;
+	int count;
+
 };
 
 struct topic_data{

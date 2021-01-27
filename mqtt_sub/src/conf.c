@@ -304,7 +304,7 @@ int get_ev_conf(struct client_data *client)
 				goto fail;
 			strcpy(curr_ev->target.str, ptr.o->v.string);
 		}
-			// geting receiver email value
+		// geting receiver email value
 		sprintf(path, "mqtt_ev.@event[%d].receiver", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
@@ -312,7 +312,7 @@ int get_ev_conf(struct client_data *client)
 		if ((curr_ev->r_email = (char*)malloc(strlen(ptr.o->v.string) + 1)) == NULL)
 			goto fail;
 		strcpy(curr_ev->r_email, ptr.o->v.string);
-			// geting sender email value
+		// geting sender email value
 		sprintf(path, "mqtt_ev.@event[%d].username", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
@@ -320,7 +320,7 @@ int get_ev_conf(struct client_data *client)
 		if ((curr_ev->s_email = (char*)malloc(strlen(ptr.o->v.string) + 1)) == NULL)
 			goto fail;
 		strcpy(curr_ev->s_email, ptr.o->v.string);
-			// geting sender email value
+		// geting sender email value
 		sprintf(path, "mqtt_ev.@event[%d].password", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
@@ -328,7 +328,7 @@ int get_ev_conf(struct client_data *client)
 		if ((curr_ev->s_pwd = (char*)malloc(strlen(ptr.o->v.string) + 1)) == NULL)
 			goto fail;
 		strcpy(curr_ev->s_pwd, ptr.o->v.string);
-			// geting mail server full url value
+		// geting mail server full url value
 		sprintf(path, "mqtt_ev.@event[%d].mail_srv", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
@@ -336,6 +336,30 @@ int get_ev_conf(struct client_data *client)
 		if ((curr_ev->mail_srv = (char*)malloc(strlen(ptr.o->v.string) + 1)) == NULL)
 			goto fail;
 		strcpy(curr_ev->mail_srv, ptr.o->v.string);
+		// geting event interval config
+		sprintf(path, "mqtt_ev.@event[%d].en_interv", i);
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
+			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
+			sprintf(path, "mqtt_ev.@event[%d].interval", i);
+			if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != \
+				UCI_OK || ptr.o == NULL || str_to_long(\
+				ptr.o->v.string, &curr_ev->interval) != SUB_SUC \
+						|| curr_ev->interval < 0)
+				goto fail;
+			curr_ev->en_interv = true;
+		}
+		// geting event count config
+		sprintf(path, "mqtt_ev.@event[%d].en_count", i);
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
+			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
+			sprintf(path, "mqtt_ev.@event[%d].count", i);
+			if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != \
+				UCI_OK || ptr.o == NULL || str_to_int(\
+				ptr.o->v.string, &curr_ev->count) != SUB_SUC \
+						|| curr_ev->count < 0)
+				goto fail;
+			curr_ev->en_count = true;
+		}
 
 		if (push_glist(client->events, curr_ev) != 0)
 			goto fail;

@@ -14,7 +14,7 @@ if not m.uci:get("mqtt_ev", sid) then
 	luci.http.redirect(m.redirect)
 end
 
-enabl = s:option(Flag, "enabled", translate('Enable'), translate("Enable topic instance"))
+o = s:option(Flag, "enabled", translate('Enable'), translate("Enable topic instance"))
 
 o = s:option(ListValue, "t_id", translate("Topic"))
 o:depends("enabled", "1")
@@ -65,12 +65,50 @@ o.parse = function(self, section, novld, ...)
 	local t = self.map:get(section, "target")
 	if enabled then
 		if value == nil or value == "" then
-			self.map:error_msg(translate("Target can not be empty"))
+			self:add_error(section, "invalid", translate("Error: target can not be empty"))
 			self.map.save = false
 		elseif dtt ~= "2" and tonumber(value, 10) == nil then
 			self:add_error(section, "invalid", translate("Error: target is not right data type"))
 			self.map.save = false
 		end
+	end
+	Value.parse(self, section, novld, ...)
+end
+
+o = s:option(Flag, "en_interv", translate('Enable event interval'), translate("Enambe minimum event interval"))
+o:depends("enabled", "1")
+
+o = s:option(Value, "interval", translate('Event interval'), translate("Set minimum amount of seconds between event invocations"))
+o:depends({enabled = "1", en_interv="1"})
+o.datatype = "uinteger"
+o.placeholder = "300"
+o.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
+	local enabled_interv = luci.http.formvalue("cbid.mqtt_ev."..section..".en_interv")
+	local value = self:formvalue(section)
+	local dtt = dtype:formvalue(section)
+	if enabled and enabled_interv and (value == nil or value == "") then
+		self:add_error(section, "invalid", translate("Error: even interval can not be empty"))
+		self.map.save = false
+	end
+	Value.parse(self, section, novld, ...)
+end
+
+o = s:option(Flag, "en_count", translate('Enable event countdown'), translate("Enambe event countdown"))
+o:depends("enabled", "1")
+
+o = s:option(Value, "count", translate('Event countdown'), translate("Set maximum amount of event invocations"))
+o:depends({enabled = "1", en_count="1"})
+o.datatype = "uinteger"
+o.placeholder = "10"
+o.parse = function(self, section, novld, ...)
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
+	local enabled_count = luci.http.formvalue("cbid.mqtt_ev."..section..".en_count")
+	local value = self:formvalue(section)
+	local dtt = dtype:formvalue(section)
+	if enabled and enabled_count and (value == nil or value == "") then
+		self:add_error(section, "invalid", translate("Error: event countdown can not be empty"))
+		self.map.save = false
 	end
 	Value.parse(self, section, novld, ...)
 end

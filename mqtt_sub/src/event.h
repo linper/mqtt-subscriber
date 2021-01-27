@@ -2,6 +2,7 @@
 #define EVENT_H
 
 #include <stdlib.h>
+#include <time.h>
 #include "utils.h"
 #include "helpers.h"
 #include "mail.h"

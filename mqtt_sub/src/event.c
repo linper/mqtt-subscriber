@@ -14,7 +14,11 @@ int handle_events(struct topic_data *top, struct glist *dt_list)
 			dt = (struct msg_dt*)get_glist(dt_list, i);
 			if (strcmp(e->field, dt->type) == 0 && \
 					(rc = check_event(e, dt)) == SUB_SUC){
-				printf("event: %s\n", e->field);
+				printf("event: %s\n", e->field); //testing
+				if (e->en_count)
+					e->count--;
+				if (e->en_interv)
+					e->last_ev_t = (long)time(NULL);
 				if ((send_mail(e, dt, top->name)) != SUB_SUC)
 					goto error;
 			} else if (rc == SUB_GEN_ERR){
@@ -31,6 +35,10 @@ int check_event(struct event_data *e, struct msg_dt *dt)
 {
 	long num_val;
 	bool res;
+	if (e->en_count && e->count <= 0)
+		return SUB_FAIL;
+	if (e->en_interv && (long)time(NULL) - e->last_ev_t < e->interval)
+		return SUB_FAIL;
 	if (e->type == EV_DT_LNG && str_to_long(dt->data, &num_val) != SUB_SUC)
 		return SUB_FAIL;
 	else if (e->type == EV_DT_DBL && str_to_double(dt->data, &num_val) != SUB_SUC)

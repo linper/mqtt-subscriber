@@ -235,20 +235,20 @@ int get_ev_conf(struct client_data *client)
 	int i = 0;
 
 	c = uci_alloc_context();
-	strcpy(path, "mqtt_sub");
+	strcpy(path, "mqtt_ev");
 	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || ptr.p == NULL)
 		goto fail;
 	if ((client->events = new_glist(0)) == NULL)
 		goto fail;
 	
 	while(true){
-		sprintf(path, "mqtt_sub.@event[%d]", i);
+		sprintf(path, "mqtt_ev.@event[%d]", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.s == NULL)
 			goto success;
 		
 		//geting enabled value
-		sprintf(path, "mqtt_sub.@event[%d].enabled", i);
+		sprintf(path, "mqtt_ev.@event[%d].enabled", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 			ptr.o == NULL || strcmp("1", ptr.o->v.string) != 0){
 			i++;
@@ -260,28 +260,28 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 
 		//geting event t_id value
-		sprintf(path, "mqtt_sub.@event[%d].t_id", i);
+		sprintf(path, "mqtt_ev.@event[%d].t_id", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
 		if(str_to_int(ptr.o->v.string, &curr_ev->t_id) != SUB_SUC)
 			goto fail;
 		//geting t_id value
-		sprintf(path, "mqtt_sub.@event[%d].datatype", i);
+		sprintf(path, "mqtt_ev.@event[%d].datatype", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
 		if(str_to_int(ptr.o->v.string, &curr_ev->type) != SUB_SUC)
 			goto fail;
 		//geting rule value
-		sprintf(path, "mqtt_sub.@event[%d].rule", i);
+		sprintf(path, "mqtt_ev.@event[%d].rule", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
 		if(str_to_int(ptr.o->v.string, &curr_ev->rule) != SUB_SUC)
 			goto fail;
 		// geting event name value
-		sprintf(path, "mqtt_sub.@event[%d].field", i);
+		sprintf(path, "mqtt_ev.@event[%d].field", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
@@ -289,7 +289,7 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 		strcpy(curr_ev->field, ptr.o->v.string);
 		//geting event target value
-		sprintf(path, "mqtt_sub.@event[%d].target", i);
+		sprintf(path, "mqtt_ev.@event[%d].target", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
@@ -305,7 +305,7 @@ int get_ev_conf(struct client_data *client)
 			strcpy(curr_ev->target.str, ptr.o->v.string);
 		}
 			// geting receiver email value
-		sprintf(path, "mqtt_sub.@event[%d].receiver", i);
+		sprintf(path, "mqtt_ev.@event[%d].receiver", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
@@ -313,7 +313,7 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 		strcpy(curr_ev->r_email, ptr.o->v.string);
 			// geting sender email value
-		sprintf(path, "mqtt_sub.@event[%d].username", i);
+		sprintf(path, "mqtt_ev.@event[%d].username", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
@@ -321,7 +321,7 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 		strcpy(curr_ev->s_email, ptr.o->v.string);
 			// geting sender email value
-		sprintf(path, "mqtt_sub.@event[%d].password", i);
+		sprintf(path, "mqtt_ev.@event[%d].password", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
@@ -329,7 +329,7 @@ int get_ev_conf(struct client_data *client)
 			goto fail;
 		strcpy(curr_ev->s_pwd, ptr.o->v.string);
 			// geting mail server full url value
-		sprintf(path, "mqtt_sub.@event[%d].mail_srv", i);
+		sprintf(path, "mqtt_ev.@event[%d].mail_srv", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;

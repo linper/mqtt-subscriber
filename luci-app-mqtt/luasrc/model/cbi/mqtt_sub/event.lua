@@ -3,14 +3,14 @@ local util  = require "luci.util"
 local uci = require("luci.model.uci").cursor()
 local s, o
 
-m = Map("mqtt_sub")
+m = Map("mqtt_ev")
 local sid = arg[1]
 m.redirect = dsp.build_url("admin", "services", "mqtt", "subscriber", "events")
 s = m:section(NamedSection, sid, "event", translate("Event configuration"))
 s.addremove = true
 s.anonymous = true
 
-if not m.uci:get("mqtt_sub", sid) then
+if not m.uci:get("mqtt_ev", sid) then
 	luci.http.redirect(m.redirect)
 end
 
@@ -33,9 +33,8 @@ o:depends("enabled", "1")
 o.datatype = "string"
 o.maxlength = 65536
 o.placeholder = translate("Data field")
--- o.rmempty = false
 o.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
 	local value = self:formvalue(section)
 	if enabled and (value == nil or value == "") then
 		self:add_error(section, "invalid", translate("Error: data field can not be empty"))
@@ -60,7 +59,7 @@ o.datatype = "string"
 o.maxlength = 65536
 o.placeholder = translate("Target")
 o.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
 	local value = self:formvalue(section)
 	local dtt = dtype:formvalue(section)
 	local t = self.map:get(section, "target")
@@ -81,8 +80,8 @@ username.datatype = "credentials_validate"
 username.placeholder = translate("Sender e-mail")
 username:depends("enabled", "1")
 username.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
-	local pass = luci.http.formvalue("cbid.mqtt_sub.m"..section..".password")
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
+	local pass = luci.http.formvalue("cbid.mqtt_ev."..section..".password")
 	local value = self:formvalue(section)
 	if enabled and pass ~= nil and pass ~= "" and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: username is empty but password is not")
@@ -96,8 +95,8 @@ password.password = true
 password.datatype = "credentials_validate"
 password.placeholder = translate("Password")
 password.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
-	local pass = luci.http.formvalue("cbid.mqtt_sub.m"..section..".username")
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
+	local pass = luci.http.formvalue("cbid.mqtt_ev."..section..".username")
 	local value = self:formvalue(section)
 	if enabled and user ~= nil and user ~= "" and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: password is empty but username is not")
@@ -111,7 +110,7 @@ mail_srv.placeholder  = "smtps://smtp.gmail.com:465"
 mail_srv.datatype = "string"
 mail_srv.maxlength = 4096
 mail_srv.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
 	local value = self:formvalue(section)
 	if enabled and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: mail server is empty")
@@ -126,7 +125,7 @@ receiver:depends("enabled", "1")
 o.rmempty = false
 receiver.maxlength = 4096
 receiver.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_sub."..section..".enabled")
+	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
 	local value = self:formvalue(section)
 	if enabled and (value == nil or value == "") then
 		self:add_error(section, "invalid", "Error: receiver e-mail is empty")

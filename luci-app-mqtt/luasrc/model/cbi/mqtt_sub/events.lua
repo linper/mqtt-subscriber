@@ -2,7 +2,7 @@ local uci = require("luci.model.uci").cursor()
 local dsp = require "luci.dispatcher"
 local m ,s, o
 
-m = Map("mqtt_sub")
+m = Map("mqtt_ev")
 
 se = m:section(TypedSection, "event", translate("Events"))
 se.addremove = true
@@ -24,7 +24,7 @@ end
 o = se:option( DummyValue, "t_id", translate("Topic"))
 o.datatype = "string"
 function o.cfgvalue(self, section)
-	local id = m.uci:get("mqtt_sub", section, "t_id")
+	local id = m.uci:get("mqtt_ev", section, "t_id")
 	local found = "0"
 	self.map.uci:foreach("mqtt_sub", "topic", function(s)
 		if id == s.id then

@@ -43,7 +43,7 @@ o.parse = function(self, section, novld, ...)
 	Value.parse(self, section, novld, ...)
 end
 
-o = s:option(ListValue, "rule", translate("comparison rule"))
+o = s:option(ListValue, "rule", translate("Comparison rule"))
 o:depends("enabled", "1")
 o.rmempty = false
 o:value("1", "equal to")
@@ -90,24 +90,8 @@ o.parse = function(self, section, novld, ...)
 	if enabled and enabled_interv and (value == nil or value == "") then
 		self:add_error(section, "invalid", translate("Error: even interval can not be empty"))
 		self.map.save = false
-	end
-	Value.parse(self, section, novld, ...)
-end
-
-o = s:option(Flag, "en_count", translate('Enable event countdown'), translate("Enambe event countdown"))
-o:depends("enabled", "1")
-
-o = s:option(Value, "count", translate('Event countdown'), translate("Set maximum amount of event invocations"))
-o:depends({enabled = "1", en_count="1"})
-o.datatype = "uinteger"
-o.placeholder = "10"
-o.parse = function(self, section, novld, ...)
-	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
-	local enabled_count = luci.http.formvalue("cbid.mqtt_ev."..section..".en_count")
-	local value = self:formvalue(section)
-	local dtt = dtype:formvalue(section)
-	if enabled and enabled_count and (value == nil or value == "") then
-		self:add_error(section, "invalid", translate("Error: event countdown can not be empty"))
+	elseif  tonumber(value, 10) < 10  then
+		self:add_error(section, "invalid", translate("Error: interval nust be number not lower than 10"))
 		self.map.save = false
 	end
 	Value.parse(self, section, novld, ...)
@@ -119,10 +103,9 @@ username.placeholder = translate("Sender e-mail")
 username:depends("enabled", "1")
 username.parse = function(self, section, novld, ...)
 	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
-	local pass = luci.http.formvalue("cbid.mqtt_ev."..section..".password")
 	local value = self:formvalue(section)
-	if enabled and pass ~= nil and pass ~= "" and (value == nil or value == "") then
-		self:add_error(section, "invalid", "Error: username is empty but password is not")
+	if enabled and (value == nil or value == "") then
+		self:add_error(section, "invalid", "Error: username must not be empty")
 	end
 	Value.parse(self, section, novld, ...)
 end
@@ -134,10 +117,9 @@ password.datatype = "credentials_validate"
 password.placeholder = translate("Password")
 password.parse = function(self, section, novld, ...)
 	local enabled = luci.http.formvalue("cbid.mqtt_ev."..section..".enabled")
-	local pass = luci.http.formvalue("cbid.mqtt_ev."..section..".username")
 	local value = self:formvalue(section)
-	if enabled and user ~= nil and user ~= "" and (value == nil or value == "") then
-		self:add_error(section, "invalid", "Error: password is empty but username is not")
+	if enabled and (value == nil or value == "") then
+		self:add_error(section, "invalid", "Error: password must not be empty")
 	end
 	Value.parse(self, section, novld, ...)
 end

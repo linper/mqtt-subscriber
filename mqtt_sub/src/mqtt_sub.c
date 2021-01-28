@@ -41,14 +41,9 @@ void on_message(struct mosquitto *mosq, void *obj, \
 	struct msg_dt *mdt;
 	size_t n = count_glist(msg->body);
 
-	for (size_t i = 0; i < n; i++){
-		mdt = get_glist(msg->body, i);
-		char buff[strlen(mdt->type) + strlen(mdt->data) + 3];
-		sprintf(buff, "%s: %s", mdt->type, mdt->data);
-		if (log_db(client->db, &(client->n_msg), message->topic, buff) \
-								!= SUB_SUC)
-			goto error;
-	}
+	if (log_db(client->db, &(client->n_msg), message->topic, \
+						message->payload) != SUB_SUC)
+		goto error;
 	return;
 	error:
 		interupt = INT_PRE_DISC;

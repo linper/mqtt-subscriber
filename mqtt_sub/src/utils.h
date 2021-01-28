@@ -60,13 +60,14 @@ struct event_data{
 		double dbl;
 		char *str;
 	} target;
-	char *s_email;
-	char *s_pwd;
-	char *r_email;
-	char *mail_srv;
+	char *sender_email;
+	char *username;
+	char *password;
+	struct glist *receivers;
+	char *smtp_ip;
+	int smtp_port;
 	long interval;
 	long last_event;
-
 };
 
 struct topic_data{

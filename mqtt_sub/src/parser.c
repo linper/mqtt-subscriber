@@ -26,7 +26,7 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 	if ((msg->body = new_glist(8)) == NULL)
 		goto err;
 
-	if ((rc = json_object_object_get_ex(json, "body", &child)) != 1)
+	if ((rc = json_object_object_get_ex(json, "payload", &child)) != 1)
 		goto fail;
 	
 	if ((body = json_object_get_array(child)) == NULL)

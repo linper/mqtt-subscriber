@@ -25,13 +25,12 @@ s.refresh = true
 s.table_config = {
 	truncatePager = false,
 	labels = {
-		placeholder = translate("Search..."),
 		perPage = "Records per page {select}",
 		noRows = "No entries found",
 		info = ""
 	},
 	layout = {
-		top = "<table><tr style='padding: 0 !important; border:none !important'><td style='display: flex !important; flex-direction: row'>{select}<span style='margin-left: auto; width:100px'>{search}</span></td></tr></table>",
+		top = "<table><tr style='padding: 0 !important; border:none !important'><td style='display: flex !important; flex-direction: row'>{select}<span style='margin-left: auto; width:100px'></span></td></tr></table>",
 		bottom = "{info}{pager}"
 	}
 }

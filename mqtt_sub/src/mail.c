@@ -33,18 +33,14 @@ size_t payload_source(void *ptr, size_t size, size_t nmemb, void *userp)
 int build_message(struct glist *message, struct event_data *ev, \
 						struct msg_dt *dt, char *topic)
 {
-	size_t buff_len = strlen(topic) | strlen(ev->r_email) | \
-		strlen(ev->s_email) | sizeof(ev->target) | strlen(ev->field) | \
-							strlen(dt->data) + 256;
-	char buff[buff_len];
+	size_t bufflen = strlen(topic) | strlen(ev->sender_email) | \
+		sizeof(ev->target) | strlen(ev->field) | strlen(dt->data) + 128;
+	char buff[bufflen];
 	//Header
 	sprintf(buff, "Date: %s\r\n", "");
 	if (push_glist2(message, buff, strlen(buff)+1) != 0)
 		goto fail;
-	sprintf(buff, "To: %s\r\n", ev->r_email);
-	if (push_glist2(message, buff, strlen(buff)+1) != 0)
-		goto fail;
-	sprintf(buff, "From: %s\r\n", ev->s_email);
+	sprintf(buff, "From: %s\r\n", ev->sender_email);
 	if (push_glist2(message, buff, strlen(buff)+1) != 0)
 		goto fail;
 	sprintf(buff, "Message-ID: %s\r\n", "");
@@ -101,6 +97,7 @@ int send_mail(struct event_data *event, struct msg_dt *dt, char *topic)
 	CURL *curl;
 	CURLcode res = CURLE_OK;
 	struct curl_slist *recipients = NULL;
+	struct glist *rec = event->receivers;
 	struct upload_status upload_ctx;
 	struct glist *message = new_glist(16);
 	upload_ctx.list = message;
@@ -111,11 +108,18 @@ int send_mail(struct event_data *event, struct msg_dt *dt, char *topic)
 
 	curl = curl_easy_init();
 	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_USERNAME, event->s_email);
-		curl_easy_setopt(curl, CURLOPT_PASSWORD, event->s_pwd);
-		curl_easy_setopt(curl, CURLOPT_URL, event->mail_srv);
-		curl_easy_setopt(curl, CURLOPT_MAIL_FROM, event->s_email);
-		recipients = curl_slist_append(recipients, event->r_email);
+		curl_easy_setopt(curl, CURLOPT_USERNAME, event->username);
+		curl_easy_setopt(curl, CURLOPT_PASSWORD, event->password);
+		char url[strlen(event->smtp_ip) + 10];
+		sprintf(url, "%s:%d", event->smtp_ip, event->smtp_port);
+		curl_easy_setopt(curl, CURLOPT_URL, url);
+		curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
+		curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/cert.pem");
+		curl_easy_setopt(curl, CURLOPT_MAIL_FROM, event->sender_email);
+		for (size_t i = 0; i < count_glist(rec); i++){
+			recipients = curl_slist_append(recipients, \
+						(char*)get_glist(rec, i));
+		}
 		curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 		curl_easy_setopt(curl, CURLOPT_READFUNCTION, payload_source);
 		curl_easy_setopt(curl, CURLOPT_READDATA, &upload_ctx);

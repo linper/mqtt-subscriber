@@ -62,10 +62,11 @@ void free_ev_cb(void *obj)
 		free(event->field);
 		if (event->type == EV_DT_STR)
 			free(event->target.str);
-		free(event->r_email);
-		free(event->s_email);
-		free(event->s_pwd);
-		free(event->mail_srv);
+		free_glist(event->receivers);
+		free(event->sender_email);
+		free(event->password);
+		free(event->username);
+		free(event->smtp_ip);
 		free(event);
 
 	}

@@ -179,6 +179,8 @@ int get_top_conf(struct client_data *client)
 		if ((curr_topic->name = malloc(strlen(ptr.o->v.string) + 1)) == NULL)
 			goto fail;
 		strcpy(curr_topic->name, ptr.o->v.string);
+		if ((curr_topic->name_path = build_name_path(ptr.o->v.string)) == NULL)
+			goto fail;
 		//geting want_retained value
 		sprintf(path, "mqtt_sub.@topic[%d].want_retained", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
@@ -197,10 +199,9 @@ int get_top_conf(struct client_data *client)
 				goto fail;
 			struct uci_element *e;
 			uci_foreach_element(&ptr.o->v.list, e) {
-				if ((m = malloc(strlen(e->name) + 1)) == NULL)
+				if (push_glist2(curr_topic->fields, e->name, \
+						strlen(e->name) + 1) != 0)
 					goto fail;
-				strcpy(m, e->name);
-				push_glist(curr_topic->fields, m);
 			}
 		} else {
 			curr_topic->constrain = false;
@@ -249,19 +250,22 @@ int get_ev_conf(struct client_data *client)
 			i++;
 			continue;
 		}
-
-		if ((curr_ev = (struct event_data*)calloc(1, \
-					sizeof(struct event_data))) == NULL)
-			goto fail;
-
 		//geting event t_id value
+		int t_id = 0;
 		sprintf(path, "mqtt_events.@event[%d].t_id", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
-								ptr.o == NULL)
+			ptr.o == NULL || str_to_int(ptr.o->v.string, \
+							&t_id) != SUB_SUC){
 			goto fail;
-		if(str_to_int(ptr.o->v.string, &curr_ev->t_id) != SUB_SUC)
-			goto fail;
-		//geting t_id value
+		} else if (get_top_by_id(client->tops, t_id) != NULL){
+			if ((curr_ev = (struct event_data*)calloc(1, \
+					sizeof(struct event_data))) == NULL)
+				goto fail;
+			curr_ev->t_id = t_id;
+		} else {
+			i++;
+			continue;
+		}
 		sprintf(path, "mqtt_events.@event[%d].datatype", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)

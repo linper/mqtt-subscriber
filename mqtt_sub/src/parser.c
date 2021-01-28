@@ -4,7 +4,7 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 {
 	struct json_object *json;
 	struct json_object *child;
-	struct array_list *body;
+	struct array_list *payload;
 	struct msg *msg;
 	char *dt;
 	struct msg_dt *mdt;
@@ -23,16 +23,16 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 		goto err;
 	strcpy(msg->sender, dt);
 
-	if ((msg->body = new_glist(8)) == NULL)
+	if ((msg->payload = new_glist(8)) == NULL)
 		goto err;
 
 	if ((rc = json_object_object_get_ex(json, "payload", &child)) != 1)
 		goto fail;
 	
-	if ((body = json_object_get_array(child)) == NULL)
+	if ((payload = json_object_get_array(child)) == NULL)
 		goto fail;
-	for (int i = 0; i < array_list_length(body); i++){
-		if ((json = (struct json_object*)array_list_get_idx(body, i)) == NULL)
+	for (int i = 0; i < array_list_length(payload); i++){
+		if ((json = (struct json_object*)array_list_get_idx(payload, i)) == NULL)
 			goto fail;
 
 		if ((mdt = (struct msg_dt*)calloc(1, sizeof(struct msg_dt))) == NULL)
@@ -54,7 +54,7 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 		strcpy(mdt->data, json_object_get_string(child));
 		
 
-		if (push_glist(msg->body, mdt) != 0)
+		if (push_glist(msg->payload, mdt) != 0)
 			goto err;
 	}
 	return SUB_SUC;

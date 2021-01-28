@@ -47,7 +47,7 @@ struct msg_dt{
 
 struct msg{
 	char *sender;
-	struct glist *body;
+	struct glist *payload;
 };
 
 struct event_data{
@@ -72,6 +72,7 @@ struct event_data{
 
 struct topic_data{
 	char *name;
+	struct glist *name_path;
 	int id;
 	int qos;
 	bool want_retained;

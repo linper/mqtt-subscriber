@@ -30,16 +30,81 @@ char *rand_string(char *str, size_t size)
 	return str;
 }
 
-struct topic_data *get_top_by_name(struct glist *tops, char *name)
+struct topic_data *get_top_by_id(struct glist *tops, int id)
 {
 	size_t n = count_glist(tops);
 	for (size_t i = 0; i < n; i++){
 		struct topic_data *top = (struct topic_data*)get_glist(tops, i);
-		if (strcmp(top->name, name) == 0)
+		if (top->id == id)
 			return top;
 	}
 	return NULL;
 }
+
+struct glist *get_tops(struct glist *tops, char* name)
+{
+	struct glist *matched;
+	if ((matched = new_glist(4)) == NULL)
+		return NULL;
+	size_t n = count_glist(tops);
+	struct topic_data *top;
+	int rc;
+	for (size_t i = 0; i < n; i++){
+		top = (struct topic_data*)get_glist(tops, i);
+		if ((rc = get_sing_top(top, name)) == SUB_SUC)
+			push_glist(matched, top);
+		else if (rc == SUB_GEN_ERR)
+			log_err("MQTT subscriber internal error: 1");
+	}
+	return matched;
+}
+
+int get_sing_top(struct topic_data *top, char* name)
+{
+	struct glist *npath = build_name_path(name);
+	if (!npath)
+		return SUB_GEN_ERR;
+	size_t tn = count_glist(top->name_path);
+	size_t nn = count_glist(npath);
+	if(nn > tn)
+		goto fail;
+	char *ttoken;
+	char *ntoken;
+	for (size_t i = 0; i < nn; i++){
+		ttoken = (char*)get_glist(top->name_path, i);
+		ntoken = (char*)get_glist(npath, i);
+		if (strcmp(ttoken, "#") == 0){
+			goto success;
+		} else if (strcmp(ttoken, "+") == 0){
+			continue;
+		} else if (strcmp(ntoken, ttoken) != 0){
+			goto fail;
+		}
+	}
+	success:
+		free_glist(npath);
+		return SUB_SUC;
+	fail:
+		free_glist(npath);
+		return SUB_FAIL;
+}
+
+struct glist *build_name_path(char *name)
+{
+	char buff[strlen(name) + 1];
+	strcpy(buff, name);
+	struct glist *path = new_glist(8);
+	if (!path)
+		return NULL;
+	for (char *p = strtok(buff, "/"); p != NULL; p = strtok(NULL, "/")){
+		if (p != "" && push_glist2(path, p, strlen(p)+1) != 0){
+			free_glist(path);
+			return NULL;
+		}
+	}
+	return path;
+}
+
 
 void filter_msg(struct topic_data *top, struct msg *msg)
 {
@@ -48,9 +113,9 @@ void filter_msg(struct topic_data *top, struct msg *msg)
 		char *type;
 		bool found;
 		int nf = (int)count_glist(top->fields);
-		int nt = (int)count_glist(msg->body);
+		int nt = (int)count_glist(msg->payload);
 		for (int i = 0; i < nt; i++){
-			type = ((struct msg_dt*)get_glist(msg->body, i))->type;
+			type = ((struct msg_dt*)get_glist(msg->payload, i))->type;
 			found = false;
 			for (int j = 0; j < nf; j++){
 				field = (char*)get_glist(top->fields, j);
@@ -60,7 +125,7 @@ void filter_msg(struct topic_data *top, struct msg *msg)
 				}
 			}
 			if (!found){
-				delete_glist(msg->body, i);
+				delete_glist(msg->payload, i);
 				i--;
 				nt--;
 			}

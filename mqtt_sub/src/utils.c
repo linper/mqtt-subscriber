@@ -28,9 +28,9 @@ void free_client(struct client_data *client)
 void free_msg(struct msg *msg)
 {
 	if (msg){
-		set_free_cb_glist(msg->body, &free_msg_dt_cb);
+		set_free_cb_glist(msg->payload, &free_msg_dt_cb);
 		free(msg->sender);
-		free_glist(msg->body);
+		free_glist(msg->payload);
 		free(msg);
 	}
 }
@@ -41,6 +41,7 @@ void free_top_cb(void *obj)
 		struct topic_data *top = (struct topic_data*)obj;
 		free(top->name);
 		free_glist(top->fields);
+		free_glist(top->name_path);
 		free_shallow_glist(top->events);
 		free(top);
 	}

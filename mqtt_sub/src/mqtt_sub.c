@@ -23,29 +23,33 @@ void sigHandler(int signo){
 void on_message(struct mosquitto *mosq, void *obj, \
 					const struct mosquitto_message *message)
 {
+	printf("message: %s\n", message->topic);
 	int rc;
 	struct msg *msg;
+	struct topic_data *top;
+	struct client_data *client = (struct client_data*)obj;
+	struct glist *tops = get_tops(client->tops, message->topic);
+	if (count_glist(tops) == 0)
+		return;
 	if ((rc = parse_msg(message->payload, &msg)) != SUB_SUC){
 		if (rc == SUB_GEN_ERR)
 			goto error;
 		else
 			return;
 	}
-	struct topic_data *top;
-	struct client_data *client = (struct client_data*)obj;
-	if ((top = get_top_by_name(client->tops, message->topic)) == NULL)
-		goto error;
-	filter_msg(top, msg);
-	if (handle_events(top, msg->body) != SUB_SUC)
-		goto error;
-	struct msg_dt *mdt;
-	size_t n = count_glist(msg->body);
-
+	for (size_t i = 0; i < count_glist(tops); i++){
+		top = (struct topic_data*)get_glist(tops, i);
+		filter_msg(top, msg);
+		if (handle_events(top, msg->payload, message->topic) != SUB_SUC)
+			goto error;
+	}
 	if (log_db(client->db, &(client->n_msg), message->topic, \
 						message->payload) != SUB_SUC)
 		goto error;
+	free_shallow_glist(tops);
 	return;
 	error:
+		free_shallow_glist(tops);
 		interupt = INT_PRE_DISC;
 		return;
 		
@@ -83,6 +87,7 @@ void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, \
 					int qos_count, const int *granted_qos)
 {
+	printf("%s\n", "sub");
 	struct client_data *client = (struct client_data*)obj;
 	struct topic_data *top;
 	size_t n = count_glist(client->tops);

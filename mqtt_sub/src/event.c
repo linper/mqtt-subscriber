@@ -1,6 +1,6 @@
 #include "event.h"
 
-int handle_events(struct topic_data *top, struct glist *dt_list)
+int handle_events(struct topic_data *top, struct glist *dt_list, char *rec_top)
 {
 	int rc;
 	struct glist *events = top->events;
@@ -14,11 +14,10 @@ int handle_events(struct topic_data *top, struct glist *dt_list)
 			dt = (struct msg_dt*)get_glist(dt_list, i);
 			if (strcmp(e->field, dt->type) == 0 && \
 					(rc = check_event(e, dt)) == SUB_SUC){
+				printf("%s\n", "event");
 				e->last_event = (long)time(NULL);
-				if ((send_mail(e, dt, top->name)) != SUB_SUC)
+				if ((send_mail(e, dt, rec_top)) != SUB_SUC)
 					goto error;
-			} else if (rc == SUB_GEN_ERR){
-				goto error;
 			}
 		}
 	}

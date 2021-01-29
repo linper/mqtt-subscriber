@@ -1,6 +1,7 @@
 #include "conf.h"
 
-int get_conf(struct client_data *client){
+int get_conf(struct client_data *client)
+{
 	if (get_con_conf(client) != SUB_SUC)
 		goto error;
 	if (get_top_conf(client) != SUB_SUC)
@@ -186,16 +187,11 @@ int get_top_conf(struct client_data *client)
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
 			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0)
 			curr_topic->want_retained = true;
-		//geting constrain value
-		sprintf(path, "mqtt_sub.@topic[%d].constrain", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
-			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0){
-			curr_topic->constrain = true;
+		//geting allowed types value
+		sprintf(path, "mqtt_sub.@topic[%d].type", i);
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == \
+					UCI_OK && ptr.o != NULL){
 			if((curr_topic->fields = new_glist(0)) == NULL)
-				goto fail;
-			sprintf(path, "mqtt_sub.@topic[%d].type", i);
-			if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != \
-						UCI_OK || ptr.o == NULL)
 				goto fail;
 			struct uci_element *e;
 			uci_foreach_element(&ptr.o->v.list, e) {
@@ -203,8 +199,6 @@ int get_top_conf(struct client_data *client)
 						strlen(e->name) + 1) != 0)
 					goto fail;
 			}
-		} else {
-			curr_topic->constrain = false;
 		}
 
 		if (push_glist(client->tops, curr_topic) != 0)

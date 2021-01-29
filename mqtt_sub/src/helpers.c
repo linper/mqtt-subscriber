@@ -105,32 +105,35 @@ struct glist *build_name_path(char *name)
 	return path;
 }
 
-
-void filter_msg(struct topic_data *top, struct msg *msg)
+struct msg *filter_msg(struct topic_data *top, struct msg *msg)
 {
-	if (top->constrain){
-		char *field;
-		char *type;
-		bool found;
-		int nf = (int)count_glist(top->fields);
-		int nt = (int)count_glist(msg->payload);
-		for (int i = 0; i < nt; i++){
-			type = ((struct msg_dt*)get_glist(msg->payload, i))->type;
-			found = false;
-			for (int j = 0; j < nf; j++){
-				field = (char*)get_glist(top->fields, j);
-				if (strcmp(type, field) == 0){
-					found = true;
-					break;
-				}
-			}
-			if (!found){
-				delete_glist(msg->payload, i);
-				i--;
-				nt--;
+	char *field;
+	char *type;
+	bool found;
+	int nf = (int)count_glist(top->fields);
+	int nt = (int)count_glist(msg->payload);
+	struct msg *clone_msg = (struct msg*)malloc(sizeof(struct msg));
+	clone_msg->sender = msg->sender;
+	if ((clone_msg->payload = clone_glist(msg->payload)) == NULL){
+		free_glist(clone_msg);
+		return NULL;
+	}
+	if (nf == 0)
+		return clone_msg;
+	for (size_t i = nt - 1; i > 0; i--){
+		type = ((struct msg_dt*)get_glist(msg->payload, i))->type;
+		found = false;
+		for (int j = 0; j < nf; j++){
+			field = (char*)get_glist(top->fields, j);
+			if (strcmp(type, field) == 0){
+				found = true;
+				break;
 			}
 		}
+		if (!found)
+			forget_glist(clone_msg->payload, i);
 	}
+	return clone_msg;
 }
 
 int str_to_int(char* str, int *res)
@@ -166,4 +169,3 @@ int str_to_double(char* str, double *res)
 		return SUB_GEN_ERR;
 	return SUB_SUC;
 }
-

@@ -76,7 +76,6 @@ struct topic_data{
 	int id;
 	int qos;
 	bool want_retained;
-	bool constrain;
 	struct glist *fields;
 	enum t_status status;
 	int mid;

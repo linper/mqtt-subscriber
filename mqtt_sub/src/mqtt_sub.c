@@ -23,32 +23,47 @@ void sigHandler(int signo){
 void on_message(struct mosquitto *mosq, void *obj, \
 					const struct mosquitto_message *message)
 {
-	printf("message: %s\n", message->topic);
 	int rc;
+	char out_str[strlen(message->payload)*2+10];
+	char *out_str_ptr = out_str;
+	struct msg *base_msg;
 	struct msg *msg;
 	struct topic_data *top;
 	struct client_data *client = (struct client_data*)obj;
 	struct glist *tops = get_tops(client->tops, message->topic);
-	if (count_glist(tops) == 0)
+	if (count_glist(tops) == 0){
+		free_shallow_glist(tops);
 		return;
-	if ((rc = parse_msg(message->payload, &msg)) != SUB_SUC){
+	}
+	if ((rc = parse_msg(message->payload, &base_msg)) != SUB_SUC){
 		if (rc == SUB_GEN_ERR)
-			goto error;
+			goto err_msg;
 		else
 			return;
 	}
 	for (size_t i = 0; i < count_glist(tops); i++){
 		top = (struct topic_data*)get_glist(tops, i);
-		filter_msg(top, msg);
+		if ((msg = filter_msg(top, base_msg)) == NULL)
+			goto error;
+		format_out(&out_str_ptr, msg);
 		if (handle_events(top, msg->payload, message->topic) != SUB_SUC)
 			goto error;
+		if (log_db(client->db, &(client->n_msg), message->topic, \
+							out_str) != SUB_SUC)
+			goto error;
+		free_shallow_glist(msg->payload);
+		free(msg);
 	}
-	if (log_db(client->db, &(client->n_msg), message->topic, \
-						message->payload) != SUB_SUC)
-		goto error;
 	free_shallow_glist(tops);
 	return;
 	error:
+		if(msg){
+			free_shallow_glist(msg->payload);
+			free(msg->sender);
+			free(msg);
+		}
+		free_msg(base_msg);
+	err_msg:
 		free_shallow_glist(tops);
 		interupt = INT_PRE_DISC;
 		return;
@@ -87,7 +102,6 @@ void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, \
 					int qos_count, const int *granted_qos)
 {
-	printf("%s\n", "sub");
 	struct client_data *client = (struct client_data*)obj;
 	struct topic_data *top;
 	size_t n = count_glist(client->tops);

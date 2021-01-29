@@ -20,7 +20,7 @@ struct glist *get_tops(struct glist *tops, char* name);
 //name must be exact
 int get_sing_top(struct topic_data *top, char* name);
 //deletes unallowed data fields from message
-void filter_msg(struct topic_data *top, struct msg *msg);
+struct msg *filter_msg(struct topic_data *top, struct msg *msg);
 struct glist *build_name_path(char *name);
 
 int str_to_int(char* str, int *res);

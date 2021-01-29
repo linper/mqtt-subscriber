@@ -7,6 +7,7 @@ struct glist{
 	size_t min_cap;
 	float shrink_threshold;
 	void (*free_cb)(void*);
+	void (*clone_cb)(void**, void*);
 };
 
 //cap must be power of 2 and highier than 0, if not defaults to 16;
@@ -14,17 +15,41 @@ struct glist *new_glist(int cap)
 {
 	if (cap < 1 || cap % 2 == 1)
 		cap = 16;
-	struct glist *lst = (struct glist*)malloc(sizeof(struct glist));
-	lst->count = 0;
+	struct glist *lst = (struct glist*)calloc(1, sizeof(struct glist));
+	if (!lst)
+		return NULL;
 	lst->cap = cap;
 	lst->min_cap = cap;
 	lst->shrink_threshold = 0.25;
 	void **array = (void**)malloc(sizeof(void*)*cap);
-	if (array == NULL)
+	if (!array){
+		free(lst);
 		return NULL;
+	}
 	lst->array = array;
-	lst->free_cb = NULL;
 	return lst;
+}
+
+struct glist *clone_glist(struct glist *lst)
+{
+	struct glist *clone = (struct glist*)malloc(sizeof(struct glist));
+	if (!lst)
+		return NULL;
+	memcpy(clone, lst, sizeof(struct glist));
+	clone->array = (void**)malloc(sizeof(void*) * lst->cap);
+	if (!clone->array){
+		free(clone);
+		return NULL;
+	}
+	memcpy(clone->array, lst->array, sizeof(void*) * lst->cap);
+	if (clone->clone_cb){
+		for (size_t i = 0; i < lst->count; i++){
+			clone->clone_cb(&(clone->array[i]), lst->array[i]);
+		}
+	}
+
+
+	return clone;
 }
 
 void clear_glist(struct glist *lst)
@@ -193,9 +218,24 @@ int delete_glist(struct glist *lst, int index)
 	return 0;
 }
 
+int forget_glist(struct glist *lst, int index)
+{
+	if (__convert_index_glist(lst, &index) == -1 || index > lst->count)
+		return -1;
+	for (size_t i = index; i < lst->count-1; i++)
+		*(lst->array+i) = *(lst->array+i+1);
+	lst->count--;
+	if (lst->count <= (float)lst->cap * lst->shrink_threshold && \
+			lst->count > lst->min_cap && __shrink_glist(lst) != 0)
+		return -1;
+	return 0;
+}
+
 size_t count_glist(struct glist *lst)
 {
-	return lst->count;
+	if (lst)
+		return lst->count;
+	return 0;
 }
 
 void **get_array_glist(struct glist *lst)
@@ -209,4 +249,10 @@ void set_free_cb_glist(struct glist *lst, void (*cb)(void*))
 {
 	if (lst)
 		lst->free_cb = cb;
+}
+
+void set_clone_cb_glist(struct glist *lst, void (*cb)(void**, void*))
+{
+	if (lst)
+		lst->clone_cb = cb;
 }

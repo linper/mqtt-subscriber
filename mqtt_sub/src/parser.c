@@ -67,3 +67,29 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 		return SUB_GEN_ERR;
 }
 
+void format_out(char **out_ptr, struct msg *msg)
+{
+	char *out;
+	out = *out_ptr;
+	struct json_object *base_ob;
+	struct json_object *ob;
+	struct json_object *string;
+	struct json_object *array;
+	struct msg_dt *dt;
+	base_ob = json_object_new_object();
+	array = json_object_new_array();
+	string = json_object_new_string(msg->sender);
+	json_object_object_add(base_ob, "sender", string);
+	json_object_object_add(base_ob, "payload", array);
+	size_t n = count_glist(msg->payload);
+	for (size_t i = 0; i < n; i++){
+		dt = (struct msg_dt*)get_glist(msg->payload, i);
+		ob = json_object_new_object();
+		string = json_object_new_string(dt->type);
+		json_object_object_add(ob, "type", string);
+		string = json_object_new_string(dt->data);
+		json_object_object_add(ob, "data", string);
+		json_object_array_add(array, ob);
+	}
+	strcpy(out, json_object_to_json_string(base_ob));
+}

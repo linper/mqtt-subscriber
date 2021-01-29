@@ -8,5 +8,6 @@
 
 
 int parse_msg(void *obj, struct msg **msg_ptr);
+void format_out(char **out_ptr, struct msg *msg);
 
 #endif

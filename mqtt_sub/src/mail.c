@@ -130,7 +130,6 @@ int send_mail(struct event_data *event, struct msg_dt *dt, char *topic)
 			char buff[strlen(err) + 50];
 			sprintf(buff, "MQTT subscriber failed to send e-mail: %s\n", err);
 			log_err(buff);
-			goto error;
 		}
 		curl_slist_free_all(recipients);
 		curl_easy_cleanup(curl);

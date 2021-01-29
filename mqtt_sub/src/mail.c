@@ -136,10 +136,7 @@ int send_mail(struct event_data *event, struct msg_dt *dt, char *topic)
 		free_glist(message);
 		return SUB_SUC;
 	}
-	error:
-		curl_slist_free_all(recipients);
-		curl_easy_cleanup(curl);
-		free_glist(message);
+	free_glist(message);
 	ncurl:
 		return SUB_GEN_ERR;
 

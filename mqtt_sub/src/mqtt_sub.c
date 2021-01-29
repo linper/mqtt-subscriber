@@ -16,6 +16,65 @@ void sigHandler(int signo){
 	interupt = INT_PRE_DISC;
 }
 
+int write_pid(FILE *fp, int pid)
+{
+	if ((fp = fopen("/var/run/mqtt_sub.pid", "w+")) == NULL)
+		return SUB_GEN_ERR;
+	if (fprintf(fp, "%d\n", pid) < 0){
+		fclose(fp);
+		return SUB_GEN_ERR;
+	}
+	fclose(fp);
+	return SUB_SUC;
+}
+
+void delete_pid_file()
+{
+	if (remove("/var/run/mqtt_sub.pid") != 0)
+		log_err("MQTT subscriber failed to delete /var/run/mqtt_sub.pid");
+}
+
+int kill_rival_process()
+{
+	int pid = (int)getpid();
+	FILE *fp;
+	size_t kill_count = 0;
+	int kill_rc = 0;
+	fp = fopen("/var/run/mqtt_sub.pid", "r");
+	if (!fp){ //file does not exists
+		if (write_pid(fp, pid) != SUB_SUC)
+			goto error;
+	} else { //file exists
+		char buff[10];
+		if (fgets(buff, sizeof(buff), fp) == EOF)
+			goto ferror;
+		int old_pid = -1;
+		int rc = str_to_int(buff, &old_pid);
+		if (rc == SUB_SUC && pid != old_pid){ //rival exists
+			while(!kill(old_pid, 0)){ //persistent killing
+				if (kill_count == 3){
+					kill_rc = kill(old_pid, SIGKILL);
+					break;
+				}
+				kill_rc = kill(old_pid, SIGINT);
+				sleep(++kill_count);
+			}
+			if (kill_rc != 0)
+				goto error;
+			if (write_pid(fp, pid) != SUB_SUC)
+				goto error;
+		} else if (rc != SUB_SUC) { //file is empty or bad format
+			if (write_pid(fp, pid) != SUB_SUC)
+				goto error;
+		}
+	}
+		return SUB_SUC;
+	ferror:
+		fclose(fp);
+	error:
+		return SUB_GEN_ERR;
+}
+
 //==========================================================================
 // CALLBACKS
 //==========================================================================
@@ -301,6 +360,11 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sigHandler);
 	openlog(NULL, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 	
+	if ((rc = kill_rival_process()) != SUB_SUC){
+		log_err("MQTT subscriber failed to kill rival process");
+		goto log_exit;
+	}
+
 	if ((rc = init_db(&db, "/usr/share/mqtt_sub/mqtt_sub.db")) != SUB_SUC)
 		goto db_exit;
 	if ((client = (struct client_data*)calloc(1, \
@@ -329,6 +393,8 @@ int main(int argc, char *argv[])
 		free_client(client);
 	db_exit:
 		sqlite3_close(db);
+	log_exit:
+		delete_pid_file();
 		closelog();
 		return rc == 0 ? 0 : -1;
 }

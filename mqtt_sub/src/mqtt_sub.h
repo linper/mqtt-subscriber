@@ -2,6 +2,8 @@
 #define MQTT_SUB_H
 
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -20,6 +22,9 @@
 #include "event.h"
 
 void sigHandler(int signo);
+int write_pid(FILE *fp, int pid);
+void delete_pid_file();
+int kill_rival_process();
 
 void on_message(struct mosquitto *mosq, void *obj, \
 				const struct mosquitto_message *message);

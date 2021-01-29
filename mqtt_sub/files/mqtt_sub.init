@@ -17,7 +17,6 @@ start_service() {
 		procd_set_param file /etc/config/mqtt_sub
 		procd_set_param pidfile /var/run/mqtt_sub.pid
 		procd_set_param command /usr/sbin/mqtt_sub
-		procd_set_param respawn ${respawn_threshold:-0} ${respawn_timeout:-60} ${respawn_retry:-0}
 		procd_close_instance
 	fi
 }

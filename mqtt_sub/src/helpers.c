@@ -53,21 +53,22 @@ int get_sing_top(struct topic_data *top, char* name)
 	size_t nn = count_glist(npath);
 	//received message (name) is alvays exact, 
 	//so it can't be shorter than stored one.
-	if(nn > tn)
+	if(nn < tn)
 		goto fail;
 	char *ttoken;
 	char *ntoken;
 	//iterates through topic path's tokens
 	for (size_t i = 0; i < nn; i++){
+		if (i == tn)
+			goto fail;
 		ttoken = (char*)get_glist(top->name_path, i);
 		ntoken = (char*)get_glist(npath, i);
-		if (strcmp(ttoken, "#") == 0){ //all further matches
+		if (strcmp(ttoken, "#") == 0) //all further matches
 			goto success;
-		} else if (strcmp(ttoken, "+") == 0){//matches any token
+		else if (strcmp(ttoken, "+") == 0)//matches any token
 			continue;
-		} else if (strcmp(ntoken, ttoken) != 0){//match fails
+		else if (strcmp(ntoken, ttoken) != 0)//match fails
 			goto fail;
-		}
 	}
 	success:
 		free_glist(npath);
@@ -110,7 +111,7 @@ struct msg *filter_msg(struct topic_data *top, struct msg *msg)
 	int nf = (int)count_glist(top->fields);
 	int nt = (int)count_glist(msg->payload);
 	//shallow cloning
-	struct msg *clone_msg = (struct msg*)malloc(sizeof(struct msg));
+	struct msg *clone_msg = (struct msg*)calloc(1, sizeof(struct msg));
 	clone_msg->sender = msg->sender;
 	if ((clone_msg->payload = clone_glist(msg->payload)) == NULL){
 		free_glist(clone_msg);

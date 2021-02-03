@@ -5,7 +5,6 @@ local s = m:section(NamedSection, "mqtt_sub", "mqtt_sub",  translate(""), transl
 enabled_sub = s:option(Flag, "enabled", translate("Enable"), translate("Select to enable MQTT subscriber"))
 
 remote_addr = s:option(Value, "remote_addr", translate("Hostname"), translate("Specify address of the broker"))
-remote_addr:depends("enabled", "1")
 remote_addr.placeholder  = "www.example.com"
 remote_addr.datatype = "host"
 remote_addr.parse = function(self, section, novld, ...)
@@ -18,7 +17,6 @@ remote_addr.parse = function(self, section, novld, ...)
 end
 
 remote_port = s:option(Value, "remote_port", translate("Port"), translate("Specify port of the broker"))
-remote_port:depends("enabled", "1")
 remote_port.default = "1883"
 remote_port.placeholder = "1883"
 remote_port.datatype = "port"
@@ -34,7 +32,6 @@ end
 remote_username = s:option(Value, "username", "Username", "Specify username of remote host")
 remote_username.datatype = "credentials_validate"
 remote_username.placeholder = translate("Username")
-remote_username:depends("enabled", "1")
 remote_username.parse = function(self, section, novld, ...)
 	local enabled = luci.http.formvalue("cbid.mqtt_sub.mqtt_sub.enabled")
 	local pass = luci.http.formvalue("cbid.mqtt_sub.mqtt_sub.password")
@@ -46,7 +43,6 @@ remote_username.parse = function(self, section, novld, ...)
 end
 
 remote_password = s:option(Value, "password", translate("Password"), translate("Specify password of remote host. Allowed characters (a-zA-Z0-9!@#$%&*+-/=?^_`{|}~. )"))
-remote_password:depends("enabled", "1")
 remote_password.password = true
 remote_password.datatype = "credentials_validate"
 remote_password.placeholder = translate("Password")
@@ -60,19 +56,34 @@ remote_password.parse = function(self, section, novld, ...)
 	Value.parse(self, section, novld, ...)
 end
 
+o = s:option(Value, "keep_alive", translate('Ping interval'), translate("The number of seconds after which the broker should send a PING message to the client if no other messages have been exchanged in that time. Max: 65535"))
+o.datatype = "uinteger"
+o.placeholder = "60"
+o.default = "60"
+o.parse = function(self, section, novld, ...)
+	local value = self:formvalue(section)
+	if value == nil or value == "" then
+		self:add_error(section, "invalid", translate("Error: Ping interval can not be empty"))
+		self.map.save = false
+	elseif tonumber(value, 10) > 65535  then
+		self:add_error(section, "invalid", translate("Error: PING interval nust be lower than 65536"))
+		self.map.save = false
+	end
+	Value.parse(self, section, novld, ...)
+end
+
 FileUpload.size = "262144"
 FileUpload.sizetext = translate("Selected file is too large, max 256 KiB")
 FileUpload.sizetextempty = translate("Selected file is empty")
 FileUpload.unsafeupload = true
 
 is_clean = s:option(Flag, "is_clean", translate("Clean"), translate("If session is clean, Broker will not store client subscriptions and missed messages"))
-is_clean:depends("enabled", "1")
+is_clean.default = "1"
 
 tls_enabled = s:option(Flag, "tls", "TLS", "Select to enable TLS encryption")
-tls_enabled:depends("enabled", "1")
 
 tls_insecure = s:option(Flag, "tls_insecure", translate("Allow insecure connection"), translate("Allow not verifying server authenticity"))
-tls_insecure:depends({enabled = "1", tls = "1"})
+tls_insecure:depends({tls = "1"})
 
 local certificates_link = luci.dispatcher.build_url("admin", "system", "admin", "certificates")
 o = s:option(Flag, "_device_files", translate("Certificate files from device"), translatef("Choose this option if you want to select certificate files from device.\

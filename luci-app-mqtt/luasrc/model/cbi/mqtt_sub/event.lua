@@ -39,14 +39,27 @@ o.parse = function(self, section, novld, ...)
 	Value.parse(self, section, novld, ...)
 end
 
-o = s:option(ListValue, "rule", translate("Comparison rule"))
-o.default = "1"
-o:value("1", "equal to")
-o:value("2", "not equal to")
-o:value("3", "more than")
-o:value("4", "less than")
-o:value("5", "more or equal to")
-o:value("6", "less or equal to")
+
+rule = s:option(ListValue, "rule", translate("Comparison rule"))
+rule.default = "1"
+rule:depends("datatype", "2")
+rule:value("1", "equal to")
+rule:value("2", "not equal to")
+
+rule = s:option(ListValue, "_rule", translate("Comparison rule"))
+rule.default = "1"
+rule:depends("datatype", "0")
+rule:depends("datatype", "1")
+rule:value("1", "equal to")
+rule:value("2", "not equal to")
+rule:value("3", "more than")
+rule:value("4", "less than")
+rule:value("5", "more or equal to")
+rule:value("6", "less or equal to")
+
+function rule.write(self, section, value)
+	m.uci:set(self.config, section, "rule", value)
+end
 
 o = s:option(Value, "target", translate("Target"), translate("Comparison target(value to compare to)"))
 o.datatype = "string"

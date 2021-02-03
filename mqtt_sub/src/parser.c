@@ -16,13 +16,12 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 	*msg_ptr = msg;
 	if ((json = json_tokener_parse(msg_str)) == NULL)
 		goto fail;
-	if ((rc = json_object_object_get_ex(json, "sender", &child)) != 1)
-		goto fail;
-	dt = json_object_get_string(child);
-	if ((msg->sender = (char*)malloc(strlen(dt) + 1)) == NULL)
-		goto err;
-	strcpy(msg->sender, dt);
-
+	if ((rc = json_object_object_get_ex(json, "sender", &child)) == 1){
+		dt = json_object_get_string(child);
+		if ((msg->sender = (char*)malloc(strlen(dt) + 1)) == NULL)
+			goto err;
+		strcpy(msg->sender, dt);
+	}
 	if ((msg->payload = new_glist(8)) == NULL)
 		goto err;
 
@@ -78,8 +77,10 @@ void format_out(char **out_ptr, struct msg *msg)
 	struct msg_dt *dt;
 	base_ob = json_object_new_object();
 	array = json_object_new_array();
-	string = json_object_new_string(msg->sender);
-	json_object_object_add(base_ob, "sender", string);
+	if (msg->sender){
+		string = json_object_new_string(msg->sender);
+		json_object_object_add(base_ob, "sender", string);
+	}
 	json_object_object_add(base_ob, "payload", array);
 	size_t n = count_glist(msg->payload);
 	//parses payload members

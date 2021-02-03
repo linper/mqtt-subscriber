@@ -92,7 +92,6 @@ struct topic_data{
 	struct glist *name_path;
 	int id;
 	int qos;
-	bool want_retained;
 	//if not NULL, contains allowed message fields
 	struct glist *fields;
 	enum t_status status;

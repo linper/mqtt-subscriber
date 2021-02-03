@@ -72,7 +72,7 @@ void free_glist(struct glist *lst){
 
 void free_shallow_glist(struct glist *lst)
 {
-	if (lst != NULL){
+	if (lst){
 		free(lst->array);
 		free(lst);
 	}

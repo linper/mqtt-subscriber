@@ -17,7 +17,6 @@ s.create = function(self, section)
 	uci:set(self.config, stat, "topic", "")
 	uci:set(self.config, stat, "id", get_top_unq_id())
 	uci:set(self.config, stat, "qos", "0")
-	uci:set(self.config, stat, "want_retained", "0")
 	luci.http.redirect(dsp.build_url("admin", "services", "mqtt", "subscriber", "topics", stat))
 	return stat
 end

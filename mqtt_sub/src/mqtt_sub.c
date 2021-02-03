@@ -90,10 +90,10 @@ int check_for_rival()
 			goto error;
 		 //rival exists
 		if (pid == old_pid)
-			return SUB_SUC;
+			goto fail;
 		rc = SUB_FAIL;
 		if (kill(old_pid, 0) == 0 && (rc = verify_pid(old_pid)) == SUB_SUC)
-			return SUB_FAIL;
+			goto fail;
 		else if (rc == SUB_GEN_ERR)
 			goto error;
 		//file is empty or bad format
@@ -129,14 +129,16 @@ void on_message(struct mosquitto *mosq, void *obj, \
 	struct glist *tops = get_tops(client->tops, message->topic);
 	if (count_glist(tops) == 0){
 		free_shallow_glist(tops);
-		return;
+		goto exit;
 	}
 	//parsed jsom string into msg struct
 	if ((rc = parse_msg(message->payload, &base_msg)) != SUB_SUC){
 		if (rc == SUB_GEN_ERR)
 			goto err_msg;
 		else
-			return;
+			if (log_db(client->db, message->topic, message->payload) != SUB_SUC)
+				goto error;
+		goto exit;
 	}
 	//interates through matched topics
 	for (size_t i = 0; i < count_glist(tops); i++){
@@ -155,8 +157,9 @@ void on_message(struct mosquitto *mosq, void *obj, \
 		free_shallow_glist(msg->payload);
 		free(msg);
 	}
-	free_shallow_glist(tops);
-	return;
+	exit:
+		free_shallow_glist(tops);
+		return;
 	error:
 		if(msg){
 			free_shallow_glist(msg->payload);
@@ -240,7 +243,7 @@ int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 	
 	if (con->use_tls){
 		if(con->tls_insecure && mosquitto_tls_insecure_set(mosq, \
-						true) != MOSQ_ERR_SUCCESS)
+				true) != MOSQ_ERR_SUCCESS)
 			goto error;
 		if (mosquitto_tls_set(mosq, con->cafile, NULL, \
 		con->certfile, con->keyfile, NULL) != EXIT_SUCCESS){
@@ -265,7 +268,7 @@ int connect_to_broker(struct mosquitto *mosq, struct client_data *client)
 	if ((rc = mosquitto_connect(mosq, client->con->host, \
 	client->con->port, client->con->keep_alive)) != MOSQ_ERR_SUCCESS){
 		char buff[50];
-		sprintf(buff, "MQTT subscriber connection failed: %d", rc);
+		sprintf(buff, "MQTT subscriber failed to connect to broker: %d", rc);
 		log_err(buff);
 		return SUB_GEN_ERR;
 	} 

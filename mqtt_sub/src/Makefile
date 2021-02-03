@@ -4,8 +4,8 @@ OBJ = $(patsubst %.c, %.o, $(SRC))
 TARGET = mqtt_sub
 LDFLAGS+=-luci -lmosquitto -lsqlite3 -ljson-c -lcurl
 CFLAGS = -Wall -Wextra -g
-DEBUG = -DDEBUG
-# DEBUG =
+# DEBUG = -DDEBUG
+DEBUG =
 RM = rm -f
 
 all: $(TARGET)

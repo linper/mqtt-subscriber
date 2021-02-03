@@ -57,28 +57,19 @@ int check_event(struct event_data *e, struct msg_dt *dt)
 			res = (strcmp(dt->data, e->target.str) != 0);
 		break;
 	case EV_R_MT:
-		if (e->type != EV_DT_STR)
-			res = num_val > e->target.lng;
-		else
-			res = (strcmp(dt->data, e->target.str) > 0);
+		res = num_val > e->target.lng;
 		break;
 	case EV_R_LT:
-		if (e->type != EV_DT_STR)
-			res = num_val < e->target.lng;
-		else
-			res = (strcmp(dt->data, e->target.str) < 0);
+		res = num_val < e->target.lng;
 		break;
 	case EV_R_ME:
-		if (e->type != EV_DT_STR)
-			res = num_val >= e->target.lng;
-		else
-			res = (strcmp(dt->data, e->target.str) >= 0);
+		res = num_val >= e->target.lng;
 		break;
 	case EV_R_LE:
-		if (e->type != EV_DT_STR)
 			res = num_val <= e->target.lng;
-		else
-			res = (strcmp(dt->data, e->target.str) <= 0);
+		break;
+	default:
+		res = 0;
 		break;
 	}
 	return !res;

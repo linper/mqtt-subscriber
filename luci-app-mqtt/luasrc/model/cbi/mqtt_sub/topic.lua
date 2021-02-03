@@ -31,11 +31,6 @@ o.parse = function(self, section, novld, ...)
 	Value.parse(self, section, novld, ...)
 end
 
-o = s:option(ListValue, "want_retained", translate("Retained"), translate("What to do with retained messages"))
-o:value("1", "accept")
-o:value("0", "reject")
-o.default = "1"
-
 o = s:option(ListValue, "qos", translate("QoS level"), translate("The publish/subscribe QoS level used for this topic"))
 o:value("0", "At most once (0)")
 o:value("1", "At least once (1)")

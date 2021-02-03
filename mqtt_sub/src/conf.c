@@ -3,9 +3,12 @@
 
 int get_conf(struct client_data *client)
 {
+	int rc;
 	//reads connection confifuration form mqtt_sub
-	if (get_con_conf(client) != SUB_SUC)
+	if ((rc = get_con_conf(client)) == SUB_GEN_ERR)
 		goto error;
+	else if (rc == SUB_FAIL)
+		return SUB_GEN_ERR;
 	if ((client->tops = new_glist(0)) == NULL)
 		goto error;
 	//sets callback
@@ -60,6 +63,10 @@ int get_con_conf(struct client_data *client)
 	void *m;
 
 	c = uci_alloc_context();
+	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.enabled", \
+		PATH_LEN)) != SUB_SUC || ptr.o == NULL || strcmp("1", \
+							ptr.o->v.string) != 0)
+		goto not_enabled;
 	//getting remote port
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.remote_port", \
 					PATH_LEN)) != SUB_SUC || ptr.o == NULL)
@@ -108,7 +115,9 @@ int get_con_conf(struct client_data *client)
 		}
 	uci_free_context(c);
 	return SUB_SUC;
-
+	not_enabled:
+		uci_free_context(c);
+		return SUB_FAIL;
 	fail:
 		uci_free_context(c);
 		return SUB_GEN_ERR;
@@ -208,11 +217,6 @@ int get_top_conf(struct glist *tops)
 		strcpy(curr_topic->name, ptr.o->v.string);
 		if ((curr_topic->name_path = build_name_path(ptr.o->v.string)) == NULL)
 			goto fail;
-		//geting want_retained value
-		sprintf(path, "mqtt_topics.@topic[%d].want_retained", i);
-		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
-			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0)
-			curr_topic->want_retained = true;
 		//geting allowed types value
 		sprintf(path, "mqtt_topics.@topic[%d].type", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == \
@@ -310,17 +314,24 @@ int get_ev_conf(struct glist *events, struct glist *tops)
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
-		if (curr_ev->type == EV_DT_LNG && str_to_long(ptr.o->v.string, \
-					&curr_ev->target.lng) != SUB_SUC){
-			goto fail;
-		} else if (curr_ev->type == EV_DT_DBL && str_to_long(\
-			ptr.o->v.string, &curr_ev->target.dbl) != SUB_SUC){
-			goto fail;
-		} else {
+		switch (curr_ev->type)
+		{
+		case EV_DT_LNG:
+			if (str_to_long(ptr.o->v.string, &curr_ev->target.lng) \
+								!= SUB_SUC)
+				goto fail;
+			break;
+		case EV_DT_DBL:
+			if (str_to_double(ptr.o->v.string, &curr_ev->target.dbl) \
+								!= SUB_SUC)
+				goto fail;
+			break;
+		default:
 			if ((curr_ev->target.str = (char*)malloc(strlen(\
 						ptr.o->v.string) + 1)) == NULL)
 				goto fail;
 			strcpy(curr_ev->target.str, ptr.o->v.string);
+			break;
 		}
 		// geting event interval config
 		sprintf(path, "mqtt_events.@event[%d].interval", i);

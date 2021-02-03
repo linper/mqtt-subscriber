@@ -1,14 +1,43 @@
 #include "conf.h"
 
+
 int get_conf(struct client_data *client)
 {
+	//reads connection confifuration form mqtt_sub
 	if (get_con_conf(client) != SUB_SUC)
 		goto error;
-	if (get_top_conf(client) != SUB_SUC)
+	if ((client->tops = new_glist(0)) == NULL)
 		goto error;
-	if (get_ev_conf(client) != SUB_SUC)
+	//sets callback
+	set_free_cb_glist(client->tops, &free_top_cb);
+	//reads topics' confifuration form mqtt_topics
+	if (get_top_conf(client->tops) != SUB_SUC)
 		goto error;
-	if (link_ev(client) != SUB_SUC)
+	if ((client->events = new_glist(0)) == NULL)
+		goto error;
+	set_free_cb_glist(client->events, &free_ev_cb);
+	//reads events' confifuration form mqtt_events
+	if (get_ev_conf(client->events, client->tops) != SUB_SUC)
+		goto error;
+	//links topics and events
+	if (link_ev(client->tops, client->events) != SUB_SUC)
+		goto error;
+	return SUB_SUC;
+	error:
+		log_err("MQTT subscriber bad configurations");
+		return SUB_GEN_ERR;
+}
+
+int reconf(struct client_data *client)
+{
+	struct glist *tops = client->tops;
+	struct glist *events = client->events;
+	clear_glist(events); //clears previous events
+	//reads events' confifuration form mqtt_events
+	if (get_ev_conf(events, tops) != SUB_SUC)
+		goto error;
+	//links topics and events
+	if (link_ev(tops, events) != SUB_SUC)
 		goto error;
 	return SUB_SUC;
 	error:
@@ -128,7 +157,7 @@ int get_tls_conf(struct uci_context* c, struct uci_ptr *ptr, \
 		return SUB_GEN_ERR;
 }
 
-int get_top_conf(struct client_data *client)
+int get_top_conf(struct glist *tops)
 {
 	struct topic_data *curr_topic;
 	struct uci_context *c;
@@ -140,20 +169,17 @@ int get_top_conf(struct client_data *client)
 	void *m;
 
 	c = uci_alloc_context();
-	strcpy(path, "mqtt_sub");
+	strcpy(path, "mqtt_topics");
 	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || ptr.p == NULL)
-		goto fail;
-	if ((client->tops = new_glist(0)) == NULL)
 		goto fail;
 	
 	while(true) {
-		sprintf(path, "mqtt_sub.@topic[%d]", i);
+		sprintf(path, "mqtt_topics.@topic[%d]", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.s == NULL)
 			goto success;
-
 		//geting enabled value
-		sprintf(path, "mqtt_sub.@topic[%d].enabled", i);
+		sprintf(path, "mqtt_topics.@topic[%d].enabled", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 			ptr.o == NULL || strcmp(ptr.o->v.string, "0") == 0){
 			i++;
@@ -164,16 +190,16 @@ int get_top_conf(struct client_data *client)
 			goto fail;
 		if ((curr_topic->events = new_glist(8)) == NULL)
 			goto fail;
-			
+		
 		//geting id value
-		sprintf(path, "mqtt_sub.@topic[%d].id", i);
+		sprintf(path, "mqtt_topics.@topic[%d].id", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
 		if(str_to_int(ptr.o->v.string, &curr_topic->id) != SUB_SUC)
 			goto fail;
 		//geting topic name value
-		sprintf(path, "mqtt_sub.@topic[%d].topic", i);
+		sprintf(path, "mqtt_topics.@topic[%d].topic", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 								ptr.o == NULL)
 			goto fail;
@@ -183,12 +209,12 @@ int get_top_conf(struct client_data *client)
 		if ((curr_topic->name_path = build_name_path(ptr.o->v.string)) == NULL)
 			goto fail;
 		//geting want_retained value
-		sprintf(path, "mqtt_sub.@topic[%d].want_retained", i);
+		sprintf(path, "mqtt_topics.@topic[%d].want_retained", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == UCI_OK && \
 			ptr.o != NULL && strcmp("1", ptr.o->v.string) == 0)
 			curr_topic->want_retained = true;
 		//geting allowed types value
-		sprintf(path, "mqtt_sub.@topic[%d].type", i);
+		sprintf(path, "mqtt_topics.@topic[%d].type", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) == \
 					UCI_OK && ptr.o != NULL){
 			if((curr_topic->fields = new_glist(0)) == NULL)
@@ -200,8 +226,7 @@ int get_top_conf(struct client_data *client)
 					goto fail;
 			}
 		}
-
-		if (push_glist(client->tops, curr_topic) != 0)
+		if (push_glist(tops, curr_topic) != 0)
 			goto fail;
 		i++;
 	}
@@ -214,7 +239,7 @@ int get_top_conf(struct client_data *client)
 		return SUB_GEN_ERR;
 }
 
-int get_ev_conf(struct client_data *client)
+int get_ev_conf(struct glist *events, struct glist *tops)
 {
 	struct event_data *curr_ev;
 	struct uci_context *c;
@@ -227,8 +252,6 @@ int get_ev_conf(struct client_data *client)
 	c = uci_alloc_context();
 	strcpy(path, "mqtt_events");
 	if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || ptr.p == NULL)
-		goto fail;
-	if ((client->events = new_glist(0)) == NULL)
 		goto fail;
 	
 	while(true){
@@ -251,7 +274,7 @@ int get_ev_conf(struct client_data *client)
 			ptr.o == NULL || str_to_int(ptr.o->v.string, \
 							&t_id) != SUB_SUC){
 			goto fail;
-		} else if (get_top_by_id(client->tops, t_id) != NULL){
+		} else if (get_top_by_id(tops, t_id) != NULL){
 			if ((curr_ev = (struct event_data*)calloc(1, \
 					sizeof(struct event_data))) == NULL)
 				goto fail;
@@ -363,7 +386,7 @@ int get_ev_conf(struct client_data *client)
 				goto fail;
 		}
 
-		if (push_glist(client->events, curr_ev) != 0)
+		if (push_glist(events, curr_ev) != 0)
 			goto fail;
 		i++;
 	}
@@ -385,19 +408,20 @@ int get_conf_ptr(struct uci_context *c, struct uci_ptr *ptr, char \
 	return SUB_SUC;
 }
 
-int link_ev(struct client_data *client)
+int link_ev(struct glist *tops, struct glist *evs)
 {
-	struct glist *evs = client->events;
-	struct glist *tops = client->tops;
 	struct event_data *ev;
 	struct topic_data *top;
 	size_t n_evs = count_glist(evs);
 	size_t n_tops = count_glist(tops);
-	for (size_t i = 0; i < n_evs; i++){
-		ev = get_glist(evs, i);
-		for (size_t i = 0; i < n_tops; i++){
-			top = get_glist(tops, i);
+	for (size_t j = 0; j < n_tops; j++){
+		top = get_glist(tops, j);
+		clear_shallow_glist(top->events); //clears previous events if they exists
+		for (size_t i = 0; i < n_evs; i++){
+			ev = get_glist(evs, i);
+			//topics related by id and t_id. e.g. primary and foriegn key, like in DB
 			if (top->id == ev->t_id){
+				//when event is found it's linked to topic's event glist
 				if (push_glist(top->events, ev) != 0)
 					return SUB_GEN_ERR;
 				break;

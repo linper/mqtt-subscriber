@@ -25,6 +25,7 @@ define Package/mqtt_sub/install
 	$(INSTALL_BIN) ./files/mqtt_sub.init $(1)/etc/init.d/mqtt_sub
 	$(INSTALL_CONF) ./files/mqtt_sub.config $(1)/etc/config/mqtt_sub
 	$(INSTALL_CONF) ./files/mqtt_events.config $(1)/etc/config/mqtt_events
+	$(INSTALL_CONF) ./files/mqtt_topics.config $(1)/etc/config/mqtt_topics
 endef
 
 $(eval $(call BuildPackage,mqtt_sub))

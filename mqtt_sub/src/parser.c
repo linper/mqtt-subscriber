@@ -31,6 +31,7 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 	
 	if ((payload = json_object_get_array(child)) == NULL)
 		goto fail;
+	//parses payload members
 	for (int i = 0; i < array_list_length(payload); i++){
 		if ((json = (struct json_object*)array_list_get_idx(payload, i)) == NULL)
 			goto fail;
@@ -52,16 +53,15 @@ int parse_msg(void *obj, struct msg **msg_ptr)
 		if ((mdt->data = (char*)malloc(len + 1)) == NULL)
 			goto err;
 		strcpy(mdt->data, json_object_get_string(child));
-		
 
 		if (push_glist(msg->payload, mdt) != 0)
 			goto err;
 	}
 	return SUB_SUC;
-	fail:
+	fail: //probaly bad message format
 		free_msg(msg);
 		return SUB_FAIL;
-	err:
+	err: //out of memory
 		log_err("MQTT subscriber failed");
 		free_msg(msg);
 		return SUB_GEN_ERR;
@@ -82,6 +82,7 @@ void format_out(char **out_ptr, struct msg *msg)
 	json_object_object_add(base_ob, "sender", string);
 	json_object_object_add(base_ob, "payload", array);
 	size_t n = count_glist(msg->payload);
+	//parses payload members
 	for (size_t i = 0; i < n; i++){
 		dt = (struct msg_dt*)get_glist(msg->payload, i);
 		ob = json_object_new_object();

@@ -26,7 +26,7 @@ o.datatype = "string"
 function o.cfgvalue(self, section)
 	local id = m.uci:get("mqtt_events", section, "t_id")
 	local found = "0"
-	self.map.uci:foreach("mqtt_sub", "topic", function(s)
+	self.map.uci:foreach("mqtt_topics", "topic", function(s)
 		if id == s.id then
 			found = s.topic
 		end

@@ -7,7 +7,7 @@ local data = {}
 local db = sqlite.database(db_path)
 
 if db then
-	data = db:select("select * from logs order by id desc;")
+	data = db:select("select * from logs order by timestamp desc;")
 	db:close()
 end
 

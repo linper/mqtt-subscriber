@@ -3,17 +3,38 @@
 
 enum inter_status{
 	INT_ABSENT,
-	INT_PRE_DISC,
-	INT_WAIT_UNSUB,
 	INT_READY_DISC,
 	INT_DONE_DISC,
 };
 
 volatile int interupt = 0;
+int reload = REL_ABSENT;
+long sub_lmodt = 0;
+long top_lmodt = 0;
+long ev_lmodt = 0;
 
 
-void sigHandler(int signo){
-	interupt = INT_PRE_DISC;
+void sigHandler(int signo)
+{
+	interupt = INT_READY_DISC;
+}
+
+void sigReloder(int signo)
+{
+	long sub_t = get_last_mod("/etc/config/mqtt_sub");
+	long top_t = get_last_mod("/etc/config/mqtt_topics");
+	long ev_t = get_last_mod("/etc/config/mqtt_events");
+	//if connection or topics' config file was changed, whole client reload in needed
+	if (sub_t > sub_lmodt || top_t > top_lmodt){
+		top_lmodt = top_t;
+		sub_lmodt = sub_t;
+		reload = REL_FULL;
+		interupt = INT_READY_DISC;
+	//if only events' config was changed, only events has to be reloaded
+	} else if (ev_t > top_lmodt){
+		ev_lmodt = ev_t;
+		reload = REL_EV;
+	}
 }
 
 int write_pid(FILE *fp, int pid)
@@ -28,18 +49,33 @@ int write_pid(FILE *fp, int pid)
 	return SUB_SUC;
 }
 
-void delete_pid_file()
+int verify_pid(int pid)
 {
-	if (remove("/var/run/mqtt_sub.pid") != 0)
-		log_err("MQTT subscriber failed to delete /var/run/mqtt_sub.pid");
+	char name[1024];
+	if(name){
+		sprintf(name, "/proc/%d/cmdline",pid);
+		FILE* f = fopen(name,"r");
+		if(f){
+			size_t size;
+			size = fread(name, 1, 1024, f);
+			fclose(f);
+			int len = (int)strlen(name);
+			//sets first pointer to last eigth byte
+			if(size > 0 && strcmp(name + len - 8 , "mqtt_sub") == 0)
+				return SUB_SUC;
+			else
+				return SUB_FAIL;
+		}
+	}
+	return SUB_GEN_ERR;
 }
 
-int kill_rival_process()
+int check_for_rival()
 {
 	int pid = (int)getpid();
 	FILE *fp;
 	size_t kill_count = 0;
-	int kill_rc = 0;
+	int rc = 0;
 	fp = fopen("/var/run/mqtt_sub.pid", "r");
 	if (!fp){ //file does not exists
 		if (write_pid(fp, pid) != SUB_SUC)
@@ -48,30 +84,30 @@ int kill_rival_process()
 		char buff[10];
 		if (fgets(buff, sizeof(buff), fp) == EOF)
 			goto ferror;
-		int old_pid = -1;
-		int rc = str_to_int(buff, &old_pid);
-		if (rc == SUB_SUC && pid != old_pid){ //rival exists
-			while(!kill(old_pid, 0)){ //persistent killing
-				if (kill_count == 3){
-					kill_rc = kill(old_pid, SIGKILL);
-					break;
-				}
-				kill_rc = kill(old_pid, SIGINT);
-				sleep(++kill_count);
-			}
-			if (kill_rc != 0)
+		fclose(fp);
+		int old_pid = 0;
+		if ((rc = str_to_int(buff, &old_pid)) != SUB_SUC)
+			goto error;
+		 //rival exists
+		if (pid == old_pid)
+			return SUB_SUC;
+		rc = SUB_FAIL;
+		if (kill(old_pid, 0) == 0 && (rc = verify_pid(old_pid)) == SUB_SUC)
+			return SUB_FAIL;
+		else if (rc == SUB_GEN_ERR)
+			goto error;
+		//file is empty or bad format
+		else if (write_pid(fp, pid) != SUB_SUC)
 				goto error;
-			if (write_pid(fp, pid) != SUB_SUC)
-				goto error;
-		} else if (rc != SUB_SUC) { //file is empty or bad format
-			if (write_pid(fp, pid) != SUB_SUC)
-				goto error;
-		}
 	}
 		return SUB_SUC;
+	fail:
+		log_err("MQTT subscriber failed, another instance is running");
+		return SUB_FAIL;
 	ferror:
 		fclose(fp);
 	error:
+		log_err("MQTT subscriber failed check for another instances");
 		return SUB_GEN_ERR;
 }
 
@@ -89,26 +125,32 @@ void on_message(struct mosquitto *mosq, void *obj, \
 	struct msg *msg;
 	struct topic_data *top;
 	struct client_data *client = (struct client_data*)obj;
+	//gets all matching topics
 	struct glist *tops = get_tops(client->tops, message->topic);
 	if (count_glist(tops) == 0){
 		free_shallow_glist(tops);
 		return;
 	}
+	//parsed jsom string into msg struct
 	if ((rc = parse_msg(message->payload, &base_msg)) != SUB_SUC){
 		if (rc == SUB_GEN_ERR)
 			goto err_msg;
 		else
 			return;
 	}
+	//interates through matched topics
 	for (size_t i = 0; i < count_glist(tops); i++){
 		top = (struct topic_data*)get_glist(tops, i);
+		//creates message clones for each topic needs
 		if ((msg = filter_msg(top, base_msg)) == NULL)
 			goto error;
+		//parses msg struct back to json string
 		format_out(&out_str_ptr, msg);
+		//checks if events occured and executes them
 		if (handle_events(top, msg->payload, message->topic) != SUB_SUC)
 			goto error;
-		if (log_db(client->db, &(client->n_msg), message->topic, \
-							out_str) != SUB_SUC)
+		//logs messages to DB
+		if (log_db(client->db, message->topic, out_str) != SUB_SUC)
 			goto error;
 		free_shallow_glist(msg->payload);
 		free(msg);
@@ -124,7 +166,7 @@ void on_message(struct mosquitto *mosq, void *obj, \
 		free_msg(base_msg);
 	err_msg:
 		free_shallow_glist(tops);
-		interupt = INT_PRE_DISC;
+		interupt = INT_READY_DISC;
 		return;
 		
 }
@@ -146,7 +188,7 @@ void on_connect(struct mosquitto *mosq, void *obj, int rc)
 	}
 	if (rc != 0){
 		log_err(buff);
-		interupt = INT_PRE_DISC;
+		interupt = INT_READY_DISC;
 	}
 }
 
@@ -164,24 +206,10 @@ void on_subscribe(struct mosquitto *mosq, void *obj, int mid, \
 	struct client_data *client = (struct client_data*)obj;
 	struct topic_data *top;
 	size_t n = count_glist(client->tops);
-	for (size_t i = 0; i < n; i++){
+	for (size_t i = 0; i < n; i++){//getting subscribed topic
 		top = get_glist(client->tops, i);
 		if (top->mid == mid){
 			top->status = T_SUB;
-			break;
-		}
-	}
-}
-
-void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
-{
-	struct client_data *client = (struct client_data*)obj;
-	struct topic_data *top;
-	size_t n = count_glist(client->tops);
-	for (size_t i = 0; i < n; i++){
-		top = get_glist(client->tops, i);
-		if (top->mid == mid){
-			top->status = T_UNSUB;
 			break;
 		}
 	}
@@ -193,7 +221,6 @@ void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
 
 int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 {
-	int rc = 0;
 	struct mosquitto *mosq;
 	char *id = NULL;
 	char id_buff[30];
@@ -207,16 +234,16 @@ int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 
 	*mosq_ptr = mosq;
 	if (con->username != NULL && con->password != NULL)
-		if ((rc = mosquitto_username_pw_set(mosq, con->username,\
-		con->password)) != EXIT_SUCCESS)
+		if ( mosquitto_username_pw_set(mosq, con->username,\
+		con->password) != EXIT_SUCCESS)
 			goto error;
 	
 	if (con->use_tls){
-		if(con->tls_insecure && (rc = mosquitto_tls_insecure_set(mosq, \
-						true)) != MOSQ_ERR_SUCCESS)
+		if(con->tls_insecure && mosquitto_tls_insecure_set(mosq, \
+						true) != MOSQ_ERR_SUCCESS)
 			goto error;
-		if ((rc = mosquitto_tls_set(mosq, con->cafile, NULL, \
-		con->certfile, con->keyfile, NULL)) != EXIT_SUCCESS){
+		if (mosquitto_tls_set(mosq, con->cafile, NULL, \
+		con->certfile, con->keyfile, NULL) != EXIT_SUCCESS){
 			err = "MQTT subscriber TLS error";
 			goto error;
 		}
@@ -253,39 +280,18 @@ int subscribe_all(struct mosquitto *mosq, struct client_data *client)
 		struct topic_data *top;
 		mosquitto_message_callback_set(mosq, &on_message);
 		mosquitto_subscribe_callback_set(mosq, &on_subscribe);
-		mosquitto_unsubscribe_callback_set(mosq, &on_unsubscribe);
 		for (size_t i = 0; i < n; i++){
 			top = get_glist(client->tops, i);
 			if ((rc = mosquitto_subscribe(mosq, &(top->mid), \
 			top->name, top->qos)) != SUB_SUC){
 				char buff[strlen(top->name)+100];
 				sprintf(buff, "MQTT subscriber failed to subscribe to topic: \
-				%s, %d", top->name, rc);
+						%s, %d", top->name, rc);
 				log_err(buff);
 			}
 		}
 	}
 
-	return SUB_SUC;
-}
-
-int pre_disconnect(struct mosquitto *mosq, struct client_data *client)
-{
-	int rc;
-	struct topic_data *top;
-	size_t n = count_glist(client->tops);
-	for (size_t i = 0; i < n; i++){
-		top = get_glist(client->tops, i);
-		if ((rc = mosquitto_unsubscribe(mosq, &(top->mid), \
-							top->name)) != SUB_SUC){
-			char buff[strlen(top->name)+100];
-			sprintf(buff, "MQTT subscriber failed to unsubscribe from topic: \
-			%s, %d", top->name, rc);
-			log_err(buff);
-			return SUB_GEN_ERR;
-		}
-	}
-	interupt = INT_WAIT_UNSUB;
 	return SUB_SUC;
 }
 
@@ -304,23 +310,10 @@ int disconnect_from_broker(struct mosquitto *mosq)
 void main_loop(struct mosquitto *mosq, struct client_data *client)
 {
 	int rc;
+	time_t t = 0;
+	time_t now = 0;
 	while(true){
 		switch (interupt){
-		case INT_PRE_DISC: //unsubscribes topics and disconnenct client
-			interupt = INT_ABSENT;
-			if ((rc = pre_disconnect(mosq, client)) != SUB_SUC)
-				interupt = INT_READY_DISC;
-			break;
-		case INT_WAIT_UNSUB: //waits while client unsubscribes all topics
-			if ((rc = test_all_t_status(client, T_UNSUB)) <= SUB_SUC){
-				interupt = INT_READY_DISC;
-			} else if ((rc = mosquitto_loop(mosq, -1, 1)) != SUB_SUC) {
-				char buff[50];
-				sprintf(buff, "MQTT subscriber failed to loop: %d", rc);
-				log_err(buff);
-				interupt = INT_READY_DISC;
-			}
-			break;
 		case INT_READY_DISC: //disconnenct client
 			interupt = INT_ABSENT;
 			if ((rc = disconnect_from_broker(mosq)) != SUB_SUC)
@@ -329,12 +322,17 @@ void main_loop(struct mosquitto *mosq, struct client_data *client)
 		case INT_DONE_DISC: //goes to exit freeing part
 			goto exit;
 			break;
-		default:
+		default: //if no actions needed, loops this part
+			if (reload == REL_EV && reconf(client) != SUB_SUC){ //checks if event reloding is needed
+				log_err("MQTT subscriber failed to reload events");
+				interupt = INT_READY_DISC;
+			}
+			reload = REL_ABSENT;
 			if ((rc = mosquitto_loop(mosq, -1, 1)) != SUB_SUC){
 				char buff[50];
 				sprintf(buff, "MQTT subscriber failed to loop: %d", rc);
 				log_err(buff);
-				interupt = INT_PRE_DISC;
+				interupt = INT_READY_DISC;
 			}
 			break;
 		}
@@ -358,31 +356,39 @@ int main(int argc, char *argv[])
 	srand((unsigned) time(&t));
 	signal(SIGINT, sigHandler);
 	signal(SIGTERM, sigHandler);
+	signal(SIGHUP, sigReloder);
 	openlog(NULL, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 	
-	if ((rc = kill_rival_process()) != SUB_SUC){
-		log_err("MQTT subscriber failed to kill rival process");
-		goto log_exit;
-	}
+	//checks if another mqtt_sum instance is already running
+	if ((rc = check_for_rival()) != SUB_SUC)
+			goto log_exit;
 
 	if ((rc = init_db(&db, "/usr/share/mqtt_sub/mqtt_sub.db")) != SUB_SUC)
 		goto db_exit;
+	reload: //reload jump point
 	if ((client = (struct client_data*)calloc(1, \
 					sizeof(struct client_data))) == NULL)
 		goto nmosq_exit;
+	//setts gets last modification times of config files
+	sub_lmodt = get_last_mod("/etc/config/mqtt_sub");
+	top_lmodt = get_last_mod("/etc/config/mqtt_topics");
+	ev_lmodt = get_last_mod("/etc/config/mqtt_events");
+	//getting configuration
 	if ((rc = get_conf(client)) != SUB_SUC)
 		goto nmosq_exit;
-
-	client->db = db; //need to fix this
+	
+	client->db = db;
 	
 	mosquitto_lib_init();
-	
+	//configures client
 	if ((rc = init_client(&mosq, client)) != SUB_SUC)
 		goto ncon_exit;
+	//connects client to broker
 	if ((rc = connect_to_broker(mosq, client)) != SUB_SUC)
 		goto ncon_exit;
+	//subscribes to topics retreived form mqtt_topics config
 	if ((rc = subscribe_all(mosq, client)) != SUB_SUC)
-		interupt = INT_PRE_DISC;
+		interupt = INT_READY_DISC;
 	
 	main_loop(mosq, client);
 
@@ -391,10 +397,14 @@ int main(int argc, char *argv[])
 		mosquitto_lib_cleanup();
 	nmosq_exit: //when mosq lib was never initialized or already freed
 		free_client(client);
+		if (reload == REL_FULL){ //reloading whole client connection
+			interupt = INT_ABSENT;
+			reload = REL_ABSENT;
+			goto reload;
+		}
 	db_exit:
 		sqlite3_close(db);
 	log_exit:
-		delete_pid_file();
 		closelog();
 		return rc == 0 ? 0 : -1;
 }

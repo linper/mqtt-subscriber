@@ -33,6 +33,7 @@ size_t payload_source(void *ptr, size_t size, size_t nmemb, void *userp)
 int build_message(struct glist *message, struct event_data *ev, \
 						struct msg_dt *dt, char *topic)
 {
+	// gets large enough buffer size
 	size_t bufflen = strlen(topic) | strlen(ev->sender_email) | \
 		sizeof(ev->target) | strlen(ev->field) | strlen(dt->data) + 128;
 	char buff[bufflen];

@@ -1,20 +1,5 @@
 #include "helpers.h"
 
-int test_all_t_status(struct client_data *client, int status)
-{
-	struct topic_data *top;
-	size_t n = count_glist(client->tops);
-	if (client != NULL){
-		for (size_t i = 0; i < n; i++){
-			top = get_glist(client->tops, i);
-			if (top->status != status)
-				return SUB_FAIL;
-		}
-		return SUB_SUC;
-	}
-	return SUB_GEN_ERR;
-}
-
 char *rand_string(char *str, size_t size)
 {
 	const char charset[] = \
@@ -44,11 +29,11 @@ struct topic_data *get_top_by_id(struct glist *tops, int id)
 struct glist *get_tops(struct glist *tops, char* name)
 {
 	struct glist *matched;
-	if ((matched = new_glist(4)) == NULL)
-		return NULL;
 	size_t n = count_glist(tops);
 	struct topic_data *top;
 	int rc;
+	if ((matched = new_glist(4)) == NULL)
+		return NULL;
 	for (size_t i = 0; i < n; i++){
 		top = (struct topic_data*)get_glist(tops, i);
 		if ((rc = get_sing_top(top, name)) == SUB_SUC)
@@ -66,18 +51,21 @@ int get_sing_top(struct topic_data *top, char* name)
 		return SUB_GEN_ERR;
 	size_t tn = count_glist(top->name_path);
 	size_t nn = count_glist(npath);
+	//received message (name) is alvays exact, 
+	//so it can't be shorter than stored one.
 	if(nn > tn)
 		goto fail;
 	char *ttoken;
 	char *ntoken;
+	//iterates through topic path's tokens
 	for (size_t i = 0; i < nn; i++){
 		ttoken = (char*)get_glist(top->name_path, i);
 		ntoken = (char*)get_glist(npath, i);
-		if (strcmp(ttoken, "#") == 0){
+		if (strcmp(ttoken, "#") == 0){ //all further matches
 			goto success;
-		} else if (strcmp(ttoken, "+") == 0){
+		} else if (strcmp(ttoken, "+") == 0){//matches any token
 			continue;
-		} else if (strcmp(ntoken, ttoken) != 0){
+		} else if (strcmp(ntoken, ttoken) != 0){//match fails
 			goto fail;
 		}
 	}
@@ -96,6 +84,7 @@ struct glist *build_name_path(char *name)
 	struct glist *path = new_glist(8);
 	if (!path)
 		return NULL;
+	//string splitting by '/'
 	for (char *p = strtok(buff, "/"); p != NULL; p = strtok(NULL, "/")){
 		if (p != "" && push_glist2(path, p, strlen(p)+1) != 0){
 			free_glist(path);
@@ -105,6 +94,14 @@ struct glist *build_name_path(char *name)
 	return path;
 }
 
+long get_last_mod(const char *path)
+{
+    struct stat attr;
+    if (stat(path, &attr) == 0)
+		return (long)(attr.st_mtim.tv_sec);
+	return SUB_GEN_ERR;
+}
+
 struct msg *filter_msg(struct topic_data *top, struct msg *msg)
 {
 	char *field;
@@ -112,13 +109,14 @@ struct msg *filter_msg(struct topic_data *top, struct msg *msg)
 	bool found;
 	int nf = (int)count_glist(top->fields);
 	int nt = (int)count_glist(msg->payload);
+	//shallow cloning
 	struct msg *clone_msg = (struct msg*)malloc(sizeof(struct msg));
 	clone_msg->sender = msg->sender;
 	if ((clone_msg->payload = clone_glist(msg->payload)) == NULL){
 		free_glist(clone_msg);
 		return NULL;
 	}
-	if (nf == 0)
+	if (nf == 0) //if all fields are allowed
 		return clone_msg;
 	for (size_t i = nt - 1; i > 0; i--){
 		type = ((struct msg_dt*)get_glist(msg->payload, i))->type;
@@ -131,10 +129,14 @@ struct msg *filter_msg(struct topic_data *top, struct msg *msg)
 			}
 		}
 		if (!found)
-			forget_glist(clone_msg->payload, i);
+			forget_glist(clone_msg->payload, i); //payload member link
 	}
 	return clone_msg;
 }
+
+//==========================================================================
+// CONVERSIONS
+//==========================================================================
 
 int str_to_int(char* str, int *res)
 {

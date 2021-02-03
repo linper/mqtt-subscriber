@@ -6,8 +6,9 @@
 #include "sqlite3.h"
 #include "utils.h"
 
-
+//opens database
 int init_db(sqlite3 **db, const char *db_name);
-int log_db(sqlite3 *db, int *n_msg, char *topic, char *message);
+//logs messages to database
+int log_db(sqlite3 *db, char *topic, char *message);
 
 #endif

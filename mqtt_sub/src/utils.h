@@ -4,9 +4,18 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <syslog.h>
+#include <stdint.h>
 #include "sqlite3.h"
 #include "glist.h"
 
+
+enum reload_status{
+	REL_ABSENT,
+	REL_FULL,
+	REL_EV,
+};
+
+//topic subscription status
 enum t_status{
 	T_UNSUB,
 	T_SUB,
@@ -27,6 +36,7 @@ enum ev_rules{
 	EV_R_LE = 6,
 };
 
+//event target datatype
 enum ev_dt{
 	EV_DT_LNG,
 	EV_DT_DBL,
@@ -40,45 +50,54 @@ extern struct client_data client_data;
 extern struct msg msg;
 extern struct msg_dt msg_dt;
 
+//member of message's payload
 struct msg_dt{
 	char *type;
 	char *data;
 };
 
-struct msg{
+//message structure
+struct msg{ 
 	char *sender;
-	struct glist *payload;
+	struct glist *payload; //contains *msg_dt
 };
 
 struct event_data{
 	int t_id;
-	char *field;
+	char *field; //target field name
 	enum ev_dt type;
 	enum ev_rules rule;
-	union{
+	union{ //target datatype
 		long lng;
 		double dbl;
 		char *str;
 	} target;
+	//sender enail info
 	char *sender_email;
 	char *username;
 	char *password;
-	struct glist *receivers;
 	char *smtp_ip;
 	int smtp_port;
+	//glist of reciever emails
+	struct glist *receivers;
+	// minimum interval at witch event can be invoked
 	long interval;
+	//last event occurence
 	long last_event;
 };
 
 struct topic_data{
 	char *name;
+	//name divided into parts e.g. aaa/bbb/ccc
 	struct glist *name_path;
 	int id;
 	int qos;
 	bool want_retained;
+	//if not NULL, contains allowed message fields
 	struct glist *fields;
 	enum t_status status;
-	int mid;
+	int mid;//message id, needed when subscribing
+	//asociaated events
 	struct glist *events;
 };
 
@@ -101,10 +120,9 @@ struct client_data{
 	struct glist *tops;
 	struct glist *events;
 	sqlite3 *db;
-	int n_msg;
 };
 
-
+//defines where to forward errors
 #ifdef DEBUG
 	#define log_err(err) \
 	fprintf(stderr, "ERROR: %s\n", err)
@@ -113,10 +131,15 @@ struct client_data{
 	syslog(LOG_ERR, "%s\n", err)
 #endif
 
+//frees whole client
 void free_client (struct client_data *client);
+//free function for msg struct
 void free_msg(struct msg *msg);
+//free callback function for topics
 void free_top_cb(void *obj);
+//free callback function for events
 void free_ev_cb(void *obj);
+//free callback function for msg_dt structs
 void free_msg_dt_cb(void *obj);
 
 #endif

@@ -2,7 +2,7 @@ local uci = require("luci.model.uci").cursor()
 local dsp = require "luci.dispatcher"
 local m ,s, o
 
-m = Map("mqtt_sub")
+m = Map("mqtt_topics")
 
 s = m:section(TypedSection, "topic", translate("Topics"), translate("") )
 s.addremove = true
@@ -29,7 +29,7 @@ s.remove = function(self, section)
 			m.uci:delete("mqtt_events", e[".name"])
 		end
     end)
-	uci:delete("mqtt_sub", section)
+	uci:delete("mqtt_topics", section)
 	return true
 end
 
@@ -40,7 +40,7 @@ s:option(Flag, "enabled")
 
 function get_top_unq_id()
     local indices = {}
-    m.uci:foreach("mqtt_sub", "topic", function(s)
+    m.uci:foreach("mqtt_topics", "topic", function(s)
 		indices[#indices + 1] = tonumber(s.id)
     end)
     local max = 0

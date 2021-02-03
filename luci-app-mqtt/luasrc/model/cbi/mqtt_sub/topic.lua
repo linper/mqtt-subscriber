@@ -3,14 +3,14 @@ local util  = require "luci.util"
 local uci = require("luci.model.uci").cursor()
 local s, o
 
-m = Map("mqtt_sub")
+m = Map("mqtt_topics")
 local sid = arg[1]
 m.redirect = dsp.build_url("admin", "services", "mqtt", "subscriber", "topics")
 s = m:section(NamedSection, sid, "topic", translate("Topic configuration"))
 s.addremove = true
 s.anonymous = true
 
-if not m.uci:get("mqtt_sub", sid) then
+if not m.uci:get("mqtt_topics", sid) then
 	luci.http.redirect(m.redirect)
 end
 

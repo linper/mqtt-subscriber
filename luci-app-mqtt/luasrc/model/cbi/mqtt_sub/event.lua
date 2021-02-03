@@ -17,7 +17,7 @@ end
 o = s:option(Flag, "enabled", translate('Enable'), translate("Enable topic instance"))
 
 o = s:option(ListValue, "t_id", translate("Topic"))
-m.uci:foreach("mqtt_sub", "topic", function(s)
+m.uci:foreach("mqtt_topics", "topic", function(s)
 	o:value(s.id, s.topic)
 end)
 

@@ -24,10 +24,19 @@ o.placeholder = translate("Topic")
 o.rmempty = false
 o.parse = function(self, section, novld, ...)
 	local value = self:formvalue(section)
+	local my_id = m.uci:get("mqtt_topics", section, "id")
 	if value == nil or value == "" then
-		self.map:error_msg(translate("Topic name can not be empty"))
+		self:add_error(section, "invalid", translate("Error: topic name can not be empty"))
 		self.map.save = false
 	end
+
+	m.uci:foreach("mqtt_topics", "topic", function(s)
+		if s.topic  == value and (my_id ~= nil or my_id ~= "" ) and my_id ~= s.id then
+			self:add_error(section, "invalid", translate("Error: dublicate topic names are not allowed"))
+			self.map.save = false
+		end
+	end)
+
 	Value.parse(self, section, novld, ...)
 end
 

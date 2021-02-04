@@ -18,7 +18,9 @@ o = s:option(Flag, "enabled", translate('Enable'), translate("Enable topic insta
 
 o = s:option(ListValue, "t_id", translate("Topic"))
 m.uci:foreach("mqtt_topics", "topic", function(s)
-	o:value(s.id, s.topic)
+	if s.topic ~= nil and s.topic ~= "" then
+		o:value(s.id, s.topic)
+	end
 end)
 
 dtype = s:option(ListValue, "datatype", translate("Data type"))

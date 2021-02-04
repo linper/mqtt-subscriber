@@ -10,8 +10,10 @@
 #include <limits.h>
 #include "utils.h"
 
-//gets topic from its name
+//gets topic from its id
 struct topic_data *get_top_by_id(struct glist *tops, int id);
+//gets topic from its name
+struct topic_data *get_top_by_name(struct glist *tops, char *name);
 //gets all matching topics
 //name must be exact
 struct glist *get_tops(struct glist *tops, char* name);
@@ -27,7 +29,7 @@ struct msg *filter_msg(struct topic_data *top, struct msg *msg);
 struct glist *build_name_path(char *name);
 //gets stat last modification time of file
 long get_last_mod(const char *path);
-
+int check_str_dub(struct glist *lst, char *target);
 //conversions
 
 int str_to_int(char* str, int *res);

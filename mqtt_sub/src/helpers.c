@@ -11,6 +11,17 @@ struct topic_data *get_top_by_id(struct glist *tops, int id)
 	return NULL;
 }
 
+struct topic_data *get_top_by_name(struct glist *tops, char *name)
+{
+	size_t n = count_glist(tops);
+	for (size_t i = 0; i < n; i++){
+		struct topic_data *top = (struct topic_data*)get_glist(tops, i);
+		if (strcmp (top->name, name) == 0)
+			return top;
+	}
+	return NULL;
+}
+
 struct glist *get_tops(struct glist *tops, char* name)
 {
 	struct glist *matched;
@@ -118,6 +129,18 @@ struct msg *filter_msg(struct topic_data *top, struct msg *msg)
 			forget_glist(clone_msg->payload, i); //payload member link
 	}
 	return clone_msg;
+}
+
+int check_str_dub(struct glist *lst, char *target)
+{
+	char *str;
+	for (size_t i = 0; i < count_glist(lst); i++){
+		str = (char*)get_glist(lst, i);
+		if (strcmp(str, target) == 0){
+			return SUB_SUC;
+		}
+	}
+	return SUB_FAIL;
 }
 
 //==========================================================================

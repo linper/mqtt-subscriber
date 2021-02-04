@@ -170,7 +170,6 @@ int get_top_conf(struct glist *tops)
 	const size_t PATH_LEN = 256;
 	char path[PATH_LEN];
 	int i = 0;
-	void *m;
 
 	c = uci_alloc_context();
 	strcpy(path, "mqtt_topics");
@@ -186,6 +185,15 @@ int get_top_conf(struct glist *tops)
 		sprintf(path, "mqtt_topics.@topic[%d].enabled", i);
 		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
 			ptr.o == NULL || strcmp(ptr.o->v.string, "0") == 0){
+			i++;
+			continue;
+		}
+		//checks if topic with name already exists
+		sprintf(path, "mqtt_topics.@topic[%d].topic", i);
+		if ((rc = uci_lookup_ptr(c, &ptr, path, true)) != UCI_OK || \
+								ptr.o == NULL)
+			goto fail;
+		if (get_top_by_name(tops, ptr.o->v.string)){
 			i++;
 			continue;
 		}
@@ -220,9 +228,11 @@ int get_top_conf(struct glist *tops)
 				goto fail;
 			struct uci_element *e;
 			uci_foreach_element(&ptr.o->v.list, e) {
-				if (push_glist2(curr_topic->fields, e->name, \
-						strlen(e->name) + 1) != 0)
-					goto fail;
+				if (check_str_dub(curr_topic->fields, e->name) == SUB_FAIL){
+					if (push_glist2(curr_topic->fields, e->name, \
+							strlen(e->name) + 1) != 0)
+						goto fail;
+				}
 			}
 		}
 		if (push_glist(tops, curr_topic) != 0)
@@ -387,9 +397,11 @@ int get_ev_conf(struct glist *events, struct glist *tops)
 			goto fail;
 		struct uci_element *e;
 		uci_foreach_element(&ptr.o->v.list, e) {
-			if (push_glist2(curr_ev->receivers, e->name, \
+			if (check_str_dub(curr_ev->receivers, e->name) == SUB_FAIL){
+				if (push_glist2(curr_ev->receivers, e->name, \
 						strlen(e->name) + 1) != 0)
-				goto fail;
+					goto fail;
+			}
 		}
 
 		if (push_glist(events, curr_ev) != 0)

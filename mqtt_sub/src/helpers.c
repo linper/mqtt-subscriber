@@ -1,20 +1,5 @@
 #include "helpers.h"
 
-char *rand_string(char *str, size_t size)
-{
-	const char charset[] = \
-	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
-	if (size) {
-		--size;
-		for (int n = 0; n < size; n++) {
-			int key = rand() % (int) (sizeof charset - 1);
-			str[n] = charset[key];
-		}
-		str[size] = '\0';
-	}
-	return str;
-}
-
 struct topic_data *get_top_by_id(struct glist *tops, int id)
 {
 	size_t n = count_glist(tops);

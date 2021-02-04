@@ -10,8 +10,6 @@
 #include <limits.h>
 #include "utils.h"
 
-//generates random string of given size 
-char *rand_string(char *str, size_t size);
 //gets topic from its name
 struct topic_data *get_top_by_id(struct glist *tops, int id);
 //gets all matching topics

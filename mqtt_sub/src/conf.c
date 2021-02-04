@@ -101,11 +101,6 @@ int get_con_conf(struct client_data *client)
 	else if(str_to_int(ptr.o->v.string, &con->keep_alive) != SUB_SUC)
 		con->keep_alive = 60; //default 60 seconds
 
-	//geting is_clean session value
-	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.is_clean", \
-		PATH_LEN)) == SUB_SUC && ptr.o != NULL && strcmp("1", \
-							ptr.o->v.string) == 0)
-		con->is_clean = true;
 	if ((rc = get_conf_ptr(c, &ptr, path, "mqtt_sub.mqtt_sub.tls", \
 		PATH_LEN)) == SUB_SUC && ptr.o != NULL && strcmp("1", \
 							ptr.o->v.string) == 0){

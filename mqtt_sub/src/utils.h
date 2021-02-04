@@ -106,7 +106,6 @@ struct connect_data{
 	char *username;
 	char *password;
 	int keep_alive;
-	bool is_clean;
 	bool use_tls;
 	bool tls_insecure;
 	char *cafile;

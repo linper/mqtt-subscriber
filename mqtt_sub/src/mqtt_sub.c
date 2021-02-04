@@ -225,14 +225,10 @@ void on_subscribe(struct mosquitto *mosq, void *obj, int mid, \
 int init_client(struct mosquitto **mosq_ptr, struct client_data *client)
 {
 	struct mosquitto *mosq;
-	char *id = NULL;
-	char id_buff[30];
 	char *err = NULL;
 	struct connect_data *con = client->con;
 
-	if (!con->is_clean)
-		id = rand_string(id_buff, sizeof(id_buff));
-	if ((mosq = mosquitto_new(id, con->is_clean, client)) == NULL)
+	if ((mosq = mosquitto_new(NULL, true, client)) == NULL)
 		goto error;
 
 	*mosq_ptr = mosq;
@@ -313,8 +309,6 @@ int disconnect_from_broker(struct mosquitto *mosq)
 void main_loop(struct mosquitto *mosq, struct client_data *client)
 {
 	int rc;
-	time_t t = 0;
-	time_t now = 0;
 	while(true){
 		switch (interupt){
 		case INT_READY_DISC: //disconnenct client
@@ -351,12 +345,10 @@ void main_loop(struct mosquitto *mosq, struct client_data *client)
 int main(int argc, char *argv[])
 {
 	int rc, erc;
-	time_t t;
 	struct mosquitto *mosq;
 	struct client_data *client;
 	sqlite3 *db;
 
-	srand((unsigned) time(&t));
 	signal(SIGINT, sigHandler);
 	signal(SIGTERM, sigHandler);
 	signal(SIGHUP, sigReloder);

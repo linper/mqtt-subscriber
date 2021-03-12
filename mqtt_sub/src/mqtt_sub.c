@@ -136,8 +136,9 @@ void on_message(struct mosquitto *mosq, void *obj, \
 		if (rc == SUB_GEN_ERR)
 			goto err_msg;
 		else
-			if (log_db(client->db, message->topic, message->payload) != SUB_SUC)
-				goto error;
+			for (size_t i = 0; i < count_glist(tops); i++)
+				if (log_db(client->db, message->topic, message->payload) != SUB_SUC)
+					goto error;
 		goto exit;
 	}
 	//interates through matched topics

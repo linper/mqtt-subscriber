@@ -120,13 +120,17 @@ struct client_data{
 	sqlite3 *db;
 };
 
-//defines where to forward errors
+//defines where to forward errors/info
 #ifdef DEBUG
 	#define log_err(err) \
 	fprintf(stderr, "ERROR: %s\n", err)
+	#define log_info(mesg) \
+	fprintf(stdout, "INFO: %s\n", mesg)
 #else
 	#define log_err(err) \
 	syslog(LOG_ERR, "%s\n", err)
+	#define log_info(mesg) \
+	syslog(LOG_INFO, "%s\n", mesg)
 #endif
 
 //frees whole client

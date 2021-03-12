@@ -13,7 +13,7 @@ end
 
 local m, s, o
 
-m = SimpleForm("mqtt_sub")
+m = Map("mqtt_sub")
 m.submit = false
 m.reset = false
 

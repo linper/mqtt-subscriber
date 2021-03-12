@@ -15,4 +15,7 @@ int handle_events(struct topic_data *top, struct glist *dt_list, char *rec_top);
 //checks if single event occured
 int check_event(struct event_data *e, struct msg_dt *dt);
 
+//make message to output when event occurs
+void log_event_msg(struct topic_data *top, struct event_data *e);
+
 #endif

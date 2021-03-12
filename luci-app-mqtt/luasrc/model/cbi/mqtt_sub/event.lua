@@ -3,6 +3,8 @@ local util  = require "luci.util"
 local uci = require("luci.model.uci").cursor()
 local s, o
 
+-- local sys = require "luci.sys"
+
 m = Map("mqtt_events")
 local sid = arg[1]
 m.redirect = dsp.build_url("admin", "services", "mqtt", "subscriber", "events")
@@ -41,14 +43,13 @@ o.parse = function(self, section, novld, ...)
 	Value.parse(self, section, novld, ...)
 end
 
-
-rule = s:option(ListValue, "rule", translate("Comparison rule"))
+rule = s:option(ListValue, "rule", translate("Comparison rule"), translate("Describes how received data and target are compared. <rec. data> <comp.rule> <target>"))
 rule.default = "1"
 rule:depends("datatype", "2")
 rule:value("1", "equal to")
 rule:value("2", "not equal to")
 
-rule = s:option(ListValue, "_rule", translate("Comparison rule"))
+rule = s:option(ListValue, "_rule", translate("Comparison rule"), translate("Describes how received data and target are compared. <rec. data> <comp.rule> <target>"))
 rule.default = "1"
 rule:depends("datatype", "0")
 rule:depends("datatype", "1")
@@ -58,6 +59,9 @@ rule:value("3", "more than")
 rule:value("4", "less than")
 rule:value("5", "more or equal to")
 rule:value("6", "less or equal to")
+rule.cfgvalue = function(self, section)
+	return m.uci:get(m.config, section, "rule") or ""
+end
 
 function rule.write(self, section, value)
 	m.uci:set(self.config, section, "rule", value)

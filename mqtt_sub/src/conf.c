@@ -442,7 +442,7 @@ int link_ev(struct glist *tops, struct glist *evs)
 				//when event is found it's linked to topic's event glist
 				if (push_glist(top->events, ev) != 0)
 					return SUB_GEN_ERR;
-				break;
+				// break;
 			}
 		}
 	}
